@@ -1,4 +1,5 @@
 import React from "react";
+import AddEmployeeForm from "./AddEmployeeForm";
 
 function HRDashboard({ user }) {
   return (
@@ -7,6 +8,7 @@ function HRDashboard({ user }) {
         <h2>HR Dashboard</h2>
         <p>Welcome, {user?.email}</p>
         <p>You can manage employees and company data here.</p>
+        <AddEmployeeForm/>
       </div>
     </div>
   );
@@ -36,17 +38,18 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
+    padding: "20px", // spacing for small screens
     boxSizing: "border-box",
   },
   card: {
     backgroundColor: "#fff",
     padding: "40px",
-    borderRadius: "0px", // optional: remove rounding for full width
+    borderRadius: "10px",
     boxShadow: "0 0 10px rgba(0,0,0,0.1)",
-    width: "100%",       // stretch card to full width
+    width: "100%",       // full width
+    maxWidth: "600px",   // limit max width for large screens
     textAlign: "center",
   },
 };
-
 
 export default HRDashboard;
