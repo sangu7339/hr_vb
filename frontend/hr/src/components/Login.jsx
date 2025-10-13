@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 function Login({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -13,6 +14,8 @@ function Login({ onLogin }) {
       alert("Please fill in all fields");
       return;
     }
+
+    setLoading(true);
 
     try {
       const response = await fetch("http://localhost:8080/api/auth/login", {
@@ -26,22 +29,26 @@ function Login({ onLogin }) {
         throw new Error(errorText);
       }
 
-      const data = await response.json();
+      const data = await response.json(); // { token: "...", role: "HR" | "EMPLOYEE" }
 
-      // Save JWT
+      // Save JWT and user info in localStorage
       localStorage.setItem("token", data.token);
+      localStorage.setItem("username", username);
+      localStorage.setItem("role", data.role);
 
-      // Decode payload safely
-      const payload = JSON.parse(atob(data.token.split(".")[1]));
-      const role = payload.role ? payload.role.toUpperCase() : "EMPLOYEE";
-
-      onLogin({ username: payload.sub, role });
+      // Update parent state
+      onLogin({ username, role: data.role });
 
       alert("Login successful!");
 
-      navigate(role === "HR" ? "/hr-dashboard" : "/employee-dashboard");
+      // Navigate to appropriate dashboard
+      navigate(data.role === "HR" ? "/hr-dashboard" : "/employee-dashboard");
+
     } catch (err) {
       alert("Login failed: " + err.message);
+      console.error("Login error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,7 +71,9 @@ function Login({ onLogin }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <button type="submit" style={styles.button}>Login</button>
+          <button type="submit" style={styles.button} disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
+          </button>
         </form>
         <p onClick={() => navigate("/register")} style={styles.link}>
           Don’t have an account? Register
@@ -75,12 +84,32 @@ function Login({ onLogin }) {
 }
 
 const styles = {
-  container: { display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", backgroundColor: "#f5f5f5" },
-  card: { backgroundColor: "#fff", padding: "30px", borderRadius: "10px", boxShadow: "0 0 10px rgba(0,0,0,0.1)", width: "350px", textAlign: "center" },
+  container: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    height: "100vh",
+    backgroundColor: "#f5f5f5",
+  },
+  card: {
+    backgroundColor: "#fff",
+    padding: "30px",
+    borderRadius: "10px",
+    boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+    width: "350px",
+    textAlign: "center",
+  },
   title: { marginBottom: "20px" },
   form: { display: "flex", flexDirection: "column", gap: "15px" },
   input: { padding: "10px", borderRadius: "5px", border: "1px solid #ccc" },
-  button: { backgroundColor: "#007bff", color: "#fff", border: "none", padding: "10px", borderRadius: "5px", cursor: "pointer" },
+  button: {
+    backgroundColor: "#007bff",
+    color: "#fff",
+    border: "none",
+    padding: "10px",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
   link: { marginTop: "15px", color: "#007bff", cursor: "pointer", fontSize: "14px" },
 };
 
