@@ -230,14 +230,48 @@ function Register() {
   );
 }
 
+// const styles = {
+//   container: { display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", backgroundColor: "#f5f5f5" },
+//   card: { backgroundColor: "#fff", padding: "30px", borderRadius: "10px", boxShadow: "0 0 10px rgba(0,0,0,0.1)", width: "350px", textAlign: "center" },
+//   title: { marginBottom: "20px" },
+//   form: { display: "flex", flexDirection: "column", gap: "15px" },
+//   input: { padding: "10px", borderRadius: "5px", border: "1px solid #ccc" },
+//   button: { backgroundColor: "#28a745", color: "#fff", border: "none", padding: "10px", borderRadius: "5px", cursor: "pointer" },
+//   link: { marginTop: "15px", color: "#28a745", cursor: "pointer", fontSize: "14px" },
+// };
 const styles = {
-  container: { display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", backgroundColor: "#f5f5f5" },
-  card: { backgroundColor: "#fff", padding: "30px", borderRadius: "10px", boxShadow: "0 0 10px rgba(0,0,0,0.1)", width: "350px", textAlign: "center" },
+  container: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    height: "100vh",
+    width: "100vw", // full screen width
+    backgroundColor: "#f5f5f5",
+    padding: "20px", // spacing for small screens
+    boxSizing: "border-box",
+  },
+  card: {
+    backgroundColor: "#fff",
+    padding: "30px",
+    borderRadius: "10px",
+    boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+    width: "100%",       // take full width
+    maxWidth: "400px",   // limit max width for large screens
+    textAlign: "center",
+  },
   title: { marginBottom: "20px" },
   form: { display: "flex", flexDirection: "column", gap: "15px" },
   input: { padding: "10px", borderRadius: "5px", border: "1px solid #ccc" },
-  button: { backgroundColor: "#28a745", color: "#fff", border: "none", padding: "10px", borderRadius: "5px", cursor: "pointer" },
+  button: {
+    backgroundColor: "#28a745",
+    color: "#fff",
+    border: "none",
+    padding: "10px",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
   link: { marginTop: "15px", color: "#28a745", cursor: "pointer", fontSize: "14px" },
 };
+  
 
 export default Register;

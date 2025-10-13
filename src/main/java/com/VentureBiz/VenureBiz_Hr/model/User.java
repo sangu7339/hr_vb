@@ -1,3 +1,4 @@
+
 package com.VentureBiz.VenureBiz_Hr.model;
 
 import jakarta.persistence.*;
@@ -16,7 +17,7 @@ public class User {
     private Long id;
 
     @Column(unique = true, nullable = false)
-    private String username;
+    private String username;  // keep username
 
     private String password;
 
