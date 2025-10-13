@@ -13,6 +13,8 @@ import java.util.List;
 public class HrController {
 
     private final EmployeeRepository employeeRepository;
+    
+    
 
     @GetMapping("/employees")
     @PreAuthorize("hasRole('HR')")
@@ -33,7 +35,6 @@ public class HrController {
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
         existing.setName(updated.getName());
         existing.setDepartment(updated.getDepartment());
-        existing.setSalary(updated.getSalary());
         existing.setEmail(updated.getEmail());
         return employeeRepository.save(existing);
     }
@@ -44,4 +45,5 @@ public class HrController {
         employeeRepository.deleteById(id);
         return "Employee deleted successfully";
     }
+    
 }
