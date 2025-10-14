@@ -17,7 +17,7 @@ public class User {
     private Long id;
 
     @Column(unique = true, nullable = false)
-    private String username;  // keep username
+    private String email;  // keep username
 
     private String password;
 

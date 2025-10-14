@@ -15,24 +15,23 @@ public class Employee {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // ✅ Unique String Employee ID (like EMP001)
+    @Column(name = "employee_id", unique = true, nullable = false)
+    private String employeeId;
+
     @Column(nullable = false)
     private String name;
 
-    @Column(unique = true, nullable = false)
-    private String email;
-
     private String department;
 
-    // ✅ Make deptRole a simple String for flexibility
     @Column(name = "dept_role")
     private String deptRole;
 
-    // ✅ Keep Status as an enum (this is fine)
     @Enumerated(EnumType.STRING)
     private Status status;
 
-    // ✅ Use ManyToOne (many employees -> one user)
-    @ManyToOne
-    @JoinColumn(name = "user_id")
+    // ✅ Link Employee to User via email (not user_id)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_email", referencedColumnName = "email", nullable = false)
     private User user;
 }
