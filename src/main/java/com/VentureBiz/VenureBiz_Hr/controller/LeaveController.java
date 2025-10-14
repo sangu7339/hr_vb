@@ -21,7 +21,7 @@ public class LeaveController {
     private final LeaveRepository leaveRepository;
     private final UserRepository userRepository;
 
-    // Employee applies for leave
+    // ✅ Employee applies for leave
     @PostMapping("/apply")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public LeaveRequest applyLeave(@RequestBody LeaveRequest leaveRequest, @RequestParam String email) {
@@ -36,12 +36,12 @@ public class LeaveController {
         leaveRequest.setEmployee(employee);
         leaveRequest.setLeaveStatus(LeaveRequest.LeaveStatus.PENDING);
         leaveRequest.setDays(days);
-        leaveRequest.setAppliedOn(LocalDate.now());
+        leaveRequest.setAppliedOn(LocalDate.now()); // ✅ LocalDate only
 
         return leaveRepository.save(leaveRequest);
     }
 
-    // Employee views their leaves
+    // ✅ Employee views their leaves
     @GetMapping("/my")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public List<LeaveRequest> myLeaves(@RequestParam String email) {
@@ -50,7 +50,7 @@ public class LeaveController {
         return leaveRepository.findByEmployee(employee);
     }
 
-    // Employee edits leave (only pending)
+    // ✅ Employee edits leave (only if pending)
     @PutMapping("/{id}/edit")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public LeaveRequest editLeave(@PathVariable Long id, @RequestBody LeaveRequest updatedLeave, @RequestParam String email) {
@@ -78,7 +78,7 @@ public class LeaveController {
         return leaveRepository.save(leave);
     }
 
-    // Employee deletes leave (only pending)
+    // ✅ Employee deletes leave (only if pending)
     @DeleteMapping("/{id}/delete")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String deleteLeave(@PathVariable Long id, @RequestParam String email) {
@@ -96,15 +96,14 @@ public class LeaveController {
         return "Leave deleted successfully";
     }
 
-    // HR views all leaves
-//    @GetMapping("/all")
-//    @PreAuthorize("hasRole('HR')")
-//    public List<LeaveRequest> allLeaves() {
-//        return leaveRepository.findAll();
-//    }
-  
+    // ✅ HR views all leaves
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('HR')")
+    public List<LeaveRequest> allLeaves() {
+        return leaveRepository.findAll();
+    }
 
-    // HR updates leave status (approve/reject)
+    // ✅ HR updates leave status (approve/reject)
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('HR')")
     public LeaveRequest updateLeaveStatus(@PathVariable Long id, @RequestParam LeaveRequest.LeaveStatus leaveStatus) {

@@ -35,11 +35,11 @@ public class LeaveRequest {
     @Column(nullable = false)
     private long days;
 
-    // ✅ Rename enum to LeaveStatus
     @Enumerated(EnumType.STRING)
     @Column(name = "leave_status", nullable = false)
     private LeaveStatus leaveStatus;
 
+    // ✅ Changed back to LocalDate
     @Column(nullable = false)
     private LocalDate appliedOn;
 
