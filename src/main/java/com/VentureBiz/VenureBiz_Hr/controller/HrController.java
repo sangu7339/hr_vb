@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -28,21 +29,29 @@ public class HrController {
         return employeeRepository.findAll();
     }
 
-    // ✅ Add new employee (POST)
+    // ✅ Add new employee
     @PostMapping("/employees")
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<?> addEmployee(@RequestBody Employee employee) {
 
         User user = resolveUser(employee.getUser());
+
         if (employeeRepository.findByUser_Email(user.getEmail()).isPresent()) {
             return ResponseEntity.status(409).body("⚠️ Employee already exists for user: " + user.getEmail());
         }
 
         employee.setUser(user);
+
+        // Default Date of Joining to today if not provided
+        if (employee.getDateOfJoining() == null) {
+            employee.setDateOfJoining(LocalDate.now());
+        }
+
         Employee saved = employeeRepository.save(employee);
         return ResponseEntity.ok(saved);
     }
 
+    // ✅ Update employee
     @PutMapping("/employees/{id}")
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<?> updateEmployee(@PathVariable Long id, @RequestBody Employee updated) {
@@ -50,35 +59,33 @@ public class HrController {
         Employee existing = employeeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + id));
 
-        // Update employee details
         existing.setEmployeeId(updated.getEmployeeId());
         existing.setName(updated.getName());
         existing.setDepartment(updated.getDepartment());
         existing.setDeptRole(updated.getDeptRole());
         existing.setStatus(updated.getStatus());
 
+        // ✅ Update Date of Joining
+        if (updated.getDateOfJoining() != null) {
+            existing.setDateOfJoining(updated.getDateOfJoining());
+        }
+
         if (updated.getUser() != null) {
             String email = updated.getUser().getEmail();
-
-            // Fetch user by email
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
 
-            // Update password if provided
             if (updated.getUser().getPassword() != null && !updated.getUser().getPassword().isBlank()) {
-                String encodedPassword = passwordEncoder.encode(updated.getUser().getPassword());
-                user.setPassword(encodedPassword);
+                user.setPassword(passwordEncoder.encode(updated.getUser().getPassword()));
                 userRepository.save(user);
             }
 
-            // Link user
             existing.setUser(user);
         }
 
         Employee saved = employeeRepository.save(existing);
         return ResponseEntity.ok(saved);
     }
-
 
     // ✅ Delete employee
     @DeleteMapping("/employees/{id}")
@@ -92,9 +99,7 @@ public class HrController {
         return ResponseEntity.ok("✅ Employee deleted successfully");
     }
 
-    // =========================
-    // Helper method to resolve User by id or email
-    // =========================
+    // Helper: resolve user by ID or email
     private User resolveUser(User userInput) {
         if (userInput == null) {
             throw new RuntimeException("User information must be provided");

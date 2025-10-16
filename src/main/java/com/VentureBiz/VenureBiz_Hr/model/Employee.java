@@ -2,6 +2,7 @@ package com.VentureBiz.VenureBiz_Hr.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDate;
 
 @Entity
 @Data
@@ -15,7 +16,7 @@ public class Employee {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ✅ Unique String Employee ID (like EMP001)
+    // Unique Employee ID
     @Column(name = "employee_id", unique = true, nullable = false)
     private String employeeId;
 
@@ -27,10 +28,13 @@ public class Employee {
     @Column(name = "dept_role")
     private String deptRole;
 
+    // ✅ Date of Joining
+    private LocalDate dateOfJoining;
+
     @Enumerated(EnumType.STRING)
     private Status status;
 
-    // ✅ Link Employee to User via email (not user_id)
+    // Link Employee to User via email
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_email", referencedColumnName = "email", nullable = false)
     private User user;
