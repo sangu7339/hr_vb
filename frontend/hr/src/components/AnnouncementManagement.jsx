@@ -1,27 +1,25 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const AnnouncementManagement = ({ user }) => {
   const [announcements, setAnnouncements] = useState([]);
-  const [newAnnouncement, setNewAnnouncement] = useState({
-    title: "",
-    message: "",
-  });
+  const [newAnnouncement, setNewAnnouncement] = useState({ title: "", message: "" });
   const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const token = localStorage.getItem("token");
   const axiosConfig = { headers: { Authorization: `Bearer ${token}` } };
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
-  // ✅ Fetch all announcements
   const fetchAnnouncements = async () => {
     try {
-      const res = await axios.get(
-        "http://localhost:8080/api/announcements/all",
-        axiosConfig
-      );
-      setAnnouncements(res.data);
+      const res = await axios.get(`${API_URL}/api/announcements/all`, axiosConfig);
+      setAnnouncements(res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     } catch (err) {
-      console.error("Error fetching announcements:", err);
+      toast.error("Error fetching announcements!");
+      console.error(err);
     }
   };
 
@@ -29,178 +27,142 @@ const AnnouncementManagement = ({ user }) => {
     fetchAnnouncements();
   }, []);
 
-  // ✅ Handle create announcement
   const handleCreate = async (e) => {
     e.preventDefault();
+
+    const hrEmail = user?.email || user?.hrEmail || user?.emailAddress;
+    if (!hrEmail) {
+      toast.warning("⚠️ HR email not found. Cannot create announcement.");
+      return;
+    }
+
     if (!newAnnouncement.title || !newAnnouncement.message) {
-      alert("Please fill in all fields");
+      toast.warning("⚠️ Please fill in all fields");
       return;
     }
 
     setLoading(true);
     try {
-      await axios.post(
-        `http://localhost:8080/api/announcements/create?hrEmail=${user.email}`,
-        newAnnouncement,
+      const res = await axios.post(
+        `${API_URL}/api/announcements/create?hrEmail=${encodeURIComponent(hrEmail)}`,
+        { title: newAnnouncement.title, message: newAnnouncement.message },
         axiosConfig
       );
-      alert("✅ Announcement created successfully!");
+      toast.success("✅ Announcement created successfully!");
       setNewAnnouncement({ title: "", message: "" });
+      setIsModalOpen(false);
       fetchAnnouncements();
     } catch (err) {
+      toast.error(`❌ Failed to create announcement: ${err.response?.data?.message || err.message}`);
       console.error(err);
-      alert("❌ Failed to create announcement.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Handle delete announcement
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this announcement?")) return;
+
     try {
-      await axios.delete(`http://localhost:8080/api/announcements/${id}`, axiosConfig);
-      alert("🗑️ Announcement deleted.");
+      await axios.delete(`${API_URL}/api/announcements/${id}`, axiosConfig);
+      toast.success("✅ Announcement deleted successfully!");
       fetchAnnouncements();
     } catch (err) {
+      toast.error("❌ Failed to delete announcement.");
       console.error(err);
-      alert("❌ Failed to delete announcement.");
     }
   };
 
   return (
     <div style={styles.container}>
-      <h2>📢 Announcement Management</h2>
+      <ToastContainer position="top-right" autoClose={3000} />
+      <h2 style={styles.heading}>Announcements</h2>
 
-      {/* ✅ Add New Announcement Form */}
-      <form style={styles.form} onSubmit={handleCreate}>
-        <input
-          type="text"
-          placeholder="Announcement Title"
-          value={newAnnouncement.title}
-          onChange={(e) =>
-            setNewAnnouncement({ ...newAnnouncement, title: e.target.value })
-          }
-          style={styles.input}
-        />
-        <textarea
-          placeholder="Write announcement message..."
-          value={newAnnouncement.message}
-          onChange={(e) =>
-            setNewAnnouncement({ ...newAnnouncement, message: e.target.value })
-          }
-          style={styles.textarea}
-        ></textarea>
-        <button type="submit" style={styles.button} disabled={loading}>
-          {loading ? "Posting..." : "➕ Add Announcement"}
+      <div style={{ marginBottom: 20, textAlign: "center" }}>
+        <button style={styles.addBtn} onClick={() => setIsModalOpen(true)}>
+          ➕ Add Announcement
         </button>
-      </form>
+      </div>
 
-      {/* ✅ List All Announcements */}
-      <div style={styles.listContainer}>
-        <h3>All Announcements</h3>
+      <div style={styles.chatList}>
         {announcements.length > 0 ? (
-          <ul style={styles.list}>
-            {announcements.map((a) => (
-              <li key={a.id} style={styles.item}>
-                <div>
-                  <h4 style={styles.title}>{a.title}</h4>
-                  <p style={styles.message}>{a.message}</p>
-                  <small style={styles.date}>
-                    Posted on {new Date(a.createdAt).toLocaleString()}
-                  </small>
-                </div>
-                <button
-                  style={styles.deleteBtn}
-                  onClick={() => handleDelete(a.id)}
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
+          announcements.map((a) => (
+            <div key={a.id} style={styles.chatBubble}>
+              <div>
+                <strong>{a.title}</strong>
+                <p style={styles.message}>{a.message}</p>
+                <small style={styles.date}>{new Date(a.createdAt).toLocaleString()}</small>
+              </div>
+              <button style={styles.deleteBtn} onClick={() => handleDelete(a.id)}>
+                ❌ Delete
+              </button>
+            </div>
+          ))
         ) : (
-          <p style={{ textAlign: "center", color: "#666" }}>
-            No announcements yet.
-          </p>
+          <p style={{ textAlign: "center", color: "#888" }}>No announcements yet.</p>
         )}
       </div>
+
+      {isModalOpen && (
+        <div style={styles.modalOverlay} onClick={() => setIsModalOpen(false)}>
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginBottom: 15 }}>New Announcement</h3>
+            <form style={{ display: "flex", flexDirection: "column", gap: 15 }} onSubmit={handleCreate}>
+              <input
+                type="text"
+                placeholder="Title"
+                value={newAnnouncement.title}
+                onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
+                style={styles.input}
+              />
+              <textarea
+                placeholder="Message"
+                value={newAnnouncement.message}
+                onChange={(e) => setNewAnnouncement({ ...newAnnouncement, message: e.target.value })}
+                style={styles.textarea}
+              />
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button type="button" style={styles.cancelBtn} onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" style={styles.button} disabled={loading}>
+                  {loading ? "Posting..." : "Post"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-// ✅ Styles
+// Styles (delete button with hover)
 const styles = {
-  container: {
-    backgroundColor: "#fff",
-    padding: 30,
-    borderRadius: 12,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-    maxWidth: 900,
-    margin: "40px auto",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-    marginBottom: 30,
-  },
-  input: {
-    padding: 10,
-    borderRadius: 8,
-    border: "1px solid #ccc",
-  },
-  textarea: {
-    padding: 10,
-    borderRadius: 8,
-    border: "1px solid #ccc",
-    minHeight: 80,
-  },
-  button: {
-    padding: "10px 15px",
-    border: "none",
-    borderRadius: 8,
-    background: "#16a34a",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  listContainer: {
-    marginTop: 20,
-  },
-  list: {
-    listStyleType: "none",
-    padding: 0,
-  },
-  item: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    background: "#f9fafb",
-    padding: "10px 15px",
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  title: {
-    margin: 0,
-    color: "#2c3e50",
-  },
-  message: {
-    margin: "5px 0",
-    color: "#555",
-  },
-  date: {
-    fontSize: "12px",
-    color: "#777",
-  },
+  container: { width: "100vw", minHeight: "100vh", padding: "20px", fontFamily: "'Poppins', sans-serif", background: "#f9f9f9", boxSizing: "border-box" },
+  heading: { fontSize: 28, textAlign: "center", marginBottom: 20 },
+  addBtn: { padding: "10px 20px", borderRadius: 8, border: "none", background: "#16a34a", color: "white", fontWeight: 600, cursor: "pointer" },
+  chatList: { display: "flex", flexDirection: "column", gap: 15, maxWidth: 700, margin: "0 auto" },
+  chatBubble: { background: "#e1f5fe", padding: 15, borderRadius: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
+  message: { margin: "5px 0", color: "#333" },
+  date: { fontSize: 12, color: "#666" },
   deleteBtn: {
     border: "none",
-    background: "#dc2626",
+    backgroundColor: "#ef4444",
     color: "white",
-    padding: "6px 10px",
-    borderRadius: 6,
+    padding: "6px 12px",
+    borderRadius: 8,
     cursor: "pointer",
+    fontWeight: 600,
+    transition: "all 0.2s ease",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
   },
+  modalOverlay: { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 },
+  modalContent: { background: "#fff", borderRadius: 12, padding: 25, width: "90%", maxWidth: 500 },
+  input: { padding: 10, borderRadius: 8, border: "1px solid #ccc", fontSize: 16 },
+  textarea: { padding: 10, borderRadius: 8, border: "1px solid #ccc", fontSize: 16, minHeight: 100, resize: "vertical" },
+  button: { padding: "10px 20px", borderRadius: 8, border: "none", background: "#16a34a", color: "white", cursor: "pointer", fontWeight: 600 },
+  cancelBtn: { padding: "10px 20px", borderRadius: 8, border: "none", background: "#ccc", cursor: "pointer" },
 };
 
 export default AnnouncementManagement;

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.*;
 import java.util.*;
+
 @CrossOrigin(origins = "http://localhost:5174")
 @RestController
 @RequestMapping("/api/attendance")
@@ -19,7 +20,7 @@ public class AttendanceController {
     private final AttendanceRepository attendanceRepository;
     private final UserRepository userRepository;
 
-    // --- TIME RULES (customize as needed) ---
+    // --- TIME RULES ---
     private static final LocalTime CHECKIN_ON_TIME = LocalTime.of(9, 50);
     private static final LocalTime LATE_LIMIT = LocalTime.of(11, 0);
     private static final LocalTime HALF_DAY_LIMIT = LocalTime.of(12, 0);
@@ -52,7 +53,7 @@ public class AttendanceController {
         return "Checked in successfully at " + now;
     }
 
-    // ✅ 2. EMPLOYEE — Check-Out (FINAL STATUS DECISION HERE)
+    // ✅ 2. EMPLOYEE — Check-Out
     @PostMapping("/checkout")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String checkOut(@RequestParam String email) {
@@ -78,38 +79,16 @@ public class AttendanceController {
         return "Checked out at " + checkOut + " (" + status + ")";
     }
 
-    // ✅ FINAL STATUS LOGIC (based on both IN & OUT)
+    // ✅ FINAL STATUS LOGIC
     private String determineFinalStatus(LocalTime checkIn, LocalTime checkOut) {
-        if (checkIn == null) {
-            return "ABSENT"; // no check-in
-        }
+        if (checkIn == null) return "ABSENT";
 
-        // 1. Checked in too late → ABSENT
-        if (checkIn.isAfter(ABSENT_LIMIT)) {
-            return "ABSENT";
-        }
+        if (checkIn.isAfter(ABSENT_LIMIT)) return "ABSENT";
+        if (checkOut.isBefore(CHECKOUT_FULL_DAY)) return "HALF_DAY";
+        if (checkIn.isAfter(HALF_DAY_LIMIT) && checkIn.isBefore(ABSENT_LIMIT)) return "HALF_DAY";
+        if (checkIn.isAfter(CHECKIN_ON_TIME) && checkIn.isBefore(LATE_LIMIT)) return "LATE";
+        if (checkIn.isBefore(CHECKIN_ON_TIME) || checkIn.equals(CHECKIN_ON_TIME)) return "PRESENT";
 
-        // 2. Left before 6:00 PM → HALF_DAY
-        if (checkOut.isBefore(CHECKOUT_FULL_DAY)) {
-            return "HALF_DAY";
-        }
-
-        // 3. Late check-in (after 12:00 but before 2:00) → HALF_DAY
-        if (checkIn.isAfter(HALF_DAY_LIMIT) && checkIn.isBefore(ABSENT_LIMIT)) {
-            return "HALF_DAY";
-        }
-
-        // 4. Late arrival (between 9:50 and 11:00) → LATE
-        if (checkIn.isAfter(CHECKIN_ON_TIME) && checkIn.isBefore(LATE_LIMIT)) {
-            return "LATE";
-        }
-
-        // 5. On time (≤ 9:50) → PRESENT
-        if (checkIn.isBefore(CHECKIN_ON_TIME) || checkIn.equals(CHECKIN_ON_TIME)) {
-            return "PRESENT";
-        }
-
-        // 6. Default (not checked out yet, or unknown)
         return "PENDING";
     }
 
@@ -135,14 +114,37 @@ public class AttendanceController {
         return attendanceRepository.findByUserAndMonth(user, year, month);
     }
 
-    // ✅ 5. HR — View All Attendance
+    // ✅ 5. EMPLOYEE — Monthly Attendance Summary
+    @GetMapping("/my/month/summary")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public Map<String, Long> getMyMonthlyAttendanceSummary(
+            @RequestParam String email,
+            @RequestParam int year,
+            @RequestParam int month) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+
+        List<Attendance> attendanceList = attendanceRepository.findByUserAndMonth(user, year, month);
+
+        Map<String, Long> summary = new HashMap<>();
+        summary.put("PRESENT", attendanceList.stream().filter(a -> "PRESENT".equals(a.getStatus())).count());
+        summary.put("LATE", attendanceList.stream().filter(a -> "LATE".equals(a.getStatus())).count());
+        summary.put("HALF_DAY", attendanceList.stream().filter(a -> "HALF_DAY".equals(a.getStatus())).count());
+        summary.put("ABSENT", attendanceList.stream().filter(a -> "ABSENT".equals(a.getStatus())).count());
+        summary.put("PENDING", attendanceList.stream().filter(a -> "PENDING".equals(a.getStatus())).count());
+
+        return summary;
+    }
+
+    // ✅ 6. HR — View All Attendance
     @GetMapping("/all")
     @PreAuthorize("hasRole('HR')")
     public List<Attendance> getAllAttendance() {
         return attendanceRepository.findAll();
     }
 
-    // ✅ 6. HR — View Attendance by Month/Year
+    // ✅ 7. HR — View Attendance by Month/Year
     @GetMapping("/all/month")
     @PreAuthorize("hasRole('HR')")
     public List<Attendance> getAllByMonth(
@@ -151,7 +153,7 @@ public class AttendanceController {
         return attendanceRepository.findByMonth(year, month);
     }
 
-    // ✅ 7. HR — Edit Attendance
+    // ✅ 8. HR — Edit Attendance
     @PutMapping("/{id}/edit")
     @PreAuthorize("hasRole('HR')")
     public Attendance editAttendance(@PathVariable Long id, @RequestBody Attendance updated) {
@@ -165,11 +167,60 @@ public class AttendanceController {
         return attendanceRepository.save(existing);
     }
 
-    // ✅ 8. HR — Delete Attendance
+    // ✅ 9. HR — Delete Attendance
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('HR')")
     public String deleteAttendance(@PathVariable Long id) {
         attendanceRepository.deleteById(id);
         return "Attendance record deleted successfully.";
+    }
+
+    // ✅ 10. HR — Monthly Attendance Summary for Single Employee
+    @GetMapping("/hr/summary")
+    @PreAuthorize("hasRole('HR')")
+    public Map<String, Long> getEmployeeMonthlyAttendanceSummary(
+            @RequestParam String email,
+            @RequestParam int year,
+            @RequestParam int month) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+
+        List<Attendance> attendanceList = attendanceRepository.findByUserAndMonth(user, year, month);
+
+        Map<String, Long> summary = new HashMap<>();
+        summary.put("PRESENT", attendanceList.stream().filter(a -> "PRESENT".equals(a.getStatus())).count());
+        summary.put("LATE", attendanceList.stream().filter(a -> "LATE".equals(a.getStatus())).count());
+        summary.put("HALF_DAY", attendanceList.stream().filter(a -> "HALF_DAY".equals(a.getStatus())).count());
+        summary.put("ABSENT", attendanceList.stream().filter(a -> "ABSENT".equals(a.getStatus())).count());
+        summary.put("PENDING", attendanceList.stream().filter(a -> "PENDING".equals(a.getStatus())).count());
+
+        return summary;
+    }
+
+    // ✅ 11. HR — Monthly Attendance Summary for All Employees
+    @GetMapping("/hr/summary/all")
+    @PreAuthorize("hasRole('HR')")
+    public Map<String, Map<String, Long>> getAllEmployeesMonthlyAttendanceSummary(
+            @RequestParam int year,
+            @RequestParam int month) {
+
+        List<User> allUsers = userRepository.findAll();
+        Map<String, Map<String, Long>> report = new HashMap<>();
+
+        for (User user : allUsers) {
+            List<Attendance> attendanceList = attendanceRepository.findByUserAndMonth(user, year, month);
+
+            Map<String, Long> summary = new HashMap<>();
+            summary.put("PRESENT", attendanceList.stream().filter(a -> "PRESENT".equals(a.getStatus())).count());
+            summary.put("LATE", attendanceList.stream().filter(a -> "LATE".equals(a.getStatus())).count());
+            summary.put("HALF_DAY", attendanceList.stream().filter(a -> "HALF_DAY".equals(a.getStatus())).count());
+            summary.put("ABSENT", attendanceList.stream().filter(a -> "ABSENT".equals(a.getStatus())).count());
+            summary.put("PENDING", attendanceList.stream().filter(a -> "PENDING".equals(a.getStatus())).count());
+
+            report.put(user.getEmail(), summary);
+        }
+
+        return report;
     }
 }

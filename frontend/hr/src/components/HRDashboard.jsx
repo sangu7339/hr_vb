@@ -83,29 +83,54 @@ function HRDashboard() {
     { key: "calendar", label: "Calendar & Events", icon: "📆" }, // new calendar tab
   ];
 
+  // const renderTab = () => {
+  //   switch (activeTab) {
+  //     case "employees":
+  //       return <EmpManagement />;
+  //     case "attendance":
+  //       return <Attendance />;
+  //     case "leaves":
+  //       return <LeaveManagement />;
+  //     case "salary":
+  //       return <HRSalaryManagement />;
+  //     case "announcements":
+  //       return <AnnouncementManagement />;
+  //     case "calendar":
+  //       return <HolidayCalendar />;
+  //     default:
+  //       return (
+  //         <div className="overview-content">
+  //           <h2>Welcome, {userEmail || "HR Admin"} 👋</h2>
+  //           <p>Select a module from the menu above to get started.</p>
+  //         </div>
+  //       );
+  //   }
+  // };
   const renderTab = () => {
-    switch (activeTab) {
-      case "employees":
-        return <EmpManagement />;
-      case "attendance":
-        return <Attendance />;
-      case "leaves":
-        return <LeaveManagement />;
-      case "salary":
-        return <HRSalaryManagement />;
-      case "announcements":
-        return <AnnouncementManagement />;
-      case "calendar":
-        return <HolidayCalendar />;
-      default:
-        return (
-          <div className="overview-content">
-            <h2>Welcome, {userEmail || "HR Admin"} 👋</h2>
-            <p>Select a module from the menu above to get started.</p>
-          </div>
-        );
-    }
-  };
+  switch (activeTab) {
+    case "employees":
+      return <EmpManagement />;
+    case "attendance":
+      return <Attendance />;
+    case "leaves":
+      return <LeaveManagement />;
+    case "salary":
+      return <HRSalaryManagement />;
+    case "announcements":
+      // Pass user object with email to AnnouncementManagement
+      return <AnnouncementManagement user={{ email: userEmail }} />;
+    case "calendar":
+      return <HolidayCalendar />;
+    default:
+      return (
+        <div className="overview-content">
+          <h2>Welcome, {userEmail || "HR Admin"} 👋</h2>
+          <p>Select a module from the menu above to get started.</p>
+        </div>
+      );
+  }
+};
+
 
   return (
     <>
@@ -121,7 +146,7 @@ function HRDashboard() {
           height: 100%;
           width: 100%;
           overflow: hidden;
-          background-color: #f9fafb;
+          background-color: #2a4969ff;
         }
 
         .dashboard {

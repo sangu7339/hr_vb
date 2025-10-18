@@ -110,11 +110,12 @@ public class LeaveController {
         LeaveRequest leave = leaveRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Leave not found"));
 
-        if (leave.getLeaveStatus() != LeaveRequest.LeaveStatus.PENDING) {
-            throw new RuntimeException("Only pending leaves can be updated");
-        }
+        // Optional: track who changed status and when
+        leave.setLeaveStatus(leaveStatus);
+  //      leave.setApprovedByHr("HR_EMAIL_OR_PRINCIPAL"); // Optional, get from logged-in HR
+ //       leave.setApprovedOn(LocalDate.now());           // Optional timestamp
 
-        leave.setLeaveStatus(leaveStatus); // APPROVED or REJECTED
         return leaveRepository.save(leave);
     }
+
 }
