@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
+// import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+
 import HRDashboard from "./components/HRDashboard.jsx";
 import EmployeeDashboard from "./components/EmployeeDashboard.jsx";
 import Login from "./components/Login.jsx";
