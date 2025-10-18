@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.*;
 import java.util.*;
-
+@CrossOrigin(origins = "http://localhost:5174")
 @RestController
 @RequestMapping("/api/attendance")
 @RequiredArgsConstructor

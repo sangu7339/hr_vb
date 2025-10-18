@@ -1,238 +1,458 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+// src/components/EmpManagement.jsx
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 
-const EmpManagement = ({ user, axiosConfig }) => {
+const EmpManagement = () => {
   const [employees, setEmployees] = useState([]);
-  const [editEmployee, setEditEmployee] = useState(null);
   const [formData, setFormData] = useState({
-    employeeId: "",
-    name: "",
-    department: "",
-    deptRole: "",
-    status: "ACTIVE",
-    user: { email: "", password: "" },
+    id: '',
+    employeeId: '',
+    name: '',
+    department: '',
+    deptRole: '',
+    dateOfJoining: '',
+    status: 'ACTIVE',
+    email: '',
+    password: '',
   });
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
 
-  const API_URL = "http://localhost:8080/api/hr/employees";
+  const departments = ['IT', 'Marketing', 'Finance', 'Operations', 'HR'];
+  const roles = ['Developer', 'Manager', 'Designer', 'HR Executive', 'Team Lead'];
 
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
-
-  // Pre-fill form if editing
-  useEffect(() => {
-    if (editEmployee) {
-      setFormData({
-        employeeId: editEmployee.employeeId || "",
-        name: editEmployee.name || "",
-        department: editEmployee.department || "",
-        deptRole: editEmployee.deptRole || "",
-        status: editEmployee.status || "ACTIVE",
-        user: {
-          email: editEmployee.user?.email || "",
-          password: "",
-        },
-      });
+  // Authentication handling (placeholder - replace with actual login)
+  const handleLogin = () => {
+    const token = prompt('Please enter your JWT token:');
+    if (token) {
+      localStorage.setItem('token', token);
+      setIsAuthenticated(true);
+      fetchEmployees();
     } else {
-      setFormData({
-        employeeId: "",
-        name: "",
-        department: "",
-        deptRole: "",
-        status: "ACTIVE",
-        user: { email: "", password: "" },
-      });
-    }
-  }, [editEmployee]);
-
-  const fetchEmployees = async () => {
-    try {
-      const response = await axios.get(API_URL, axiosConfig);
-      setEmployees(response.data);
-    } catch (error) {
-      console.error("Failed to fetch employees:", error.response || error.message);
+      setError('Authentication required. Please provide a valid token.');
     }
   };
 
+  // Axios configuration
+  const axiosConfig = {
+    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+  };
+
+  // Fetch employees
+  const fetchEmployees = async () => {
+    if (!isAuthenticated) {
+      setError('Please log in to view employees.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setMessage('');
+    try {
+      const res = await axios.get('http://localhost:8080/api/hr/employees', axiosConfig);
+      setEmployees(res.data);
+    } catch (err) {
+      console.error('Error fetching employees:', err);
+      if (err.response?.status === 403) {
+        setError('Access denied. Please ensure you have HR role permissions.');
+        localStorage.removeItem('token');
+        setIsAuthenticated(false);
+      } else {
+        setError(err.response?.data || '❌ Failed to fetch employees');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchEmployees();
+    }
+  }, [isAuthenticated]);
+
+  // Handle input change
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === "email" || name === "password") {
-      setFormData({ ...formData, user: { ...formData.user, [name]: value } });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Handle form submit (Add or Update)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage("");
-
-    try {
-      let response;
-      if (editEmployee) {
-        response = await axios.put(`${API_URL}/${editEmployee.id}`, formData, axiosConfig);
-        setEmployees(employees.map(emp => (emp.id === response.data.id ? response.data : emp)));
-        setEditEmployee(null);
-      } else {
-        response = await axios.post(API_URL, formData, axiosConfig);
-        setEmployees([...employees, response.data]);
-      }
-
-      setMessage("✅ Operation successful!");
-      setFormData({
-        employeeId: "",
-        name: "",
-        department: "",
-        deptRole: "",
-        status: "ACTIVE",
-        user: { email: "", password: "" },
-      });
-    } catch (error) {
-      console.error("Error:", error.response || error.message);
-      setMessage(error.response?.data?.message || "⚠️ Operation failed.");
+    if (!isAuthenticated) {
+      setError('Please log in to perform this action.');
+      return;
     }
 
-    setLoading(false);
+    setLoading(true);
+    setError('');
+    setMessage('');
+    try {
+      const payload = {
+        employeeId: formData.employeeId,
+        name: formData.name,
+        department: formData.department || null,
+        deptRole: formData.deptRole || null,
+        dateOfJoining: formData.dateOfJoining || null,
+        status: formData.status,
+        user: {
+          email: formData.email,
+          password: formData.password || null,
+        },
+      };
+
+      if (editing) {
+        await axios.put(
+          `http://localhost:8080/api/hr/employees/${formData.id}`,
+          payload,
+          axiosConfig
+        );
+        setMessage('✅ Employee updated successfully!');
+      } else {
+        if (!formData.password) {
+          setError('Password is required for new employees.');
+          setLoading(false);
+          return;
+        }
+        await axios.post('http://localhost:8080/api/hr/employees', payload, axiosConfig);
+        setMessage('✅ Employee added successfully!');
+      }
+
+      setFormData({
+        id: '',
+        employeeId: '',
+        name: '',
+        department: '',
+        deptRole: '',
+        dateOfJoining: '',
+        status: 'ACTIVE',
+        email: '',
+        password: '',
+      });
+      setEditing(false);
+      fetchEmployees();
+    } catch (err) {
+      console.error('Error saving employee:', err);
+      if (err.response?.status === 403) {
+        setError('Access denied. Please ensure you have HR role permissions.');
+        localStorage.removeItem('token');
+        setIsAuthenticated(false);
+      } else {
+        setError(err.response?.data || '❌ Failed to save employee.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Edit Employee
+  const handleEdit = (emp) => {
+    setEditing(true);
+    setFormData({
+      id: emp.id,
+      employeeId: emp.employeeId,
+      name: emp.name,
+      department: emp.department || '',
+      deptRole: emp.deptRole || '',
+      dateOfJoining: emp.dateOfJoining || '',
+      status: emp.status || 'ACTIVE',
+      email: emp.user?.email || '',
+      password: '',
+    });
+  };
+
+  // Delete Employee
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this employee?")) return;
+    if (!isAuthenticated) {
+      setError('Please log in to perform this action.');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete this employee?')) return;
+    setLoading(true);
+    setError('');
+    setMessage('');
     try {
-      await axios.delete(`${API_URL}/${id}`, axiosConfig);
-      setEmployees(employees.filter(emp => emp.id !== id));
-    } catch (error) {
-      console.error("Failed to delete employee:", error.response || error.message);
+      await axios.delete(`http://localhost:8080/api/hr/employees/${id}`, axiosConfig);
+      setMessage('✅ Employee deleted successfully!');
+      fetchEmployees();
+    } catch (err) {
+      console.error('Error deleting employee:', err);
+      if (err.response?.status === 403) {
+        setError('Access denied. Please ensure you have HR role permissions.');
+        localStorage.removeItem('token');
+        setIsAuthenticated(false);
+      } else {
+        setError(err.response?.data || '❌ Failed to delete employee.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reset Password
+  const handleResetPassword = async (id, email) => {
+    if (!isAuthenticated) {
+      setError('Please log in to perform this action.');
+      return;
+    }
+
+    const newPassword = prompt(`Enter a new password for ${email}:`);
+    if (!newPassword) return;
+
+    setLoading(true);
+    setError('');
+    setMessage('');
+    try {
+      const employee = employees.find((emp) => emp.id === id);
+      await axios.put(
+        `http://localhost:8080/api/hr/employees/${id}`,
+        {
+          employeeId: employee.employeeId,
+          name: employee.name,
+          department: employee.department || null,
+          deptRole: employee.deptRole || null,
+          dateOfJoining: employee.dateOfJoining || null,
+          status: employee.status,
+          user: { email, password: newPassword },
+        },
+        axiosConfig
+      );
+      setMessage('✅ Password updated successfully!');
+    } catch (err) {
+      console.error('Error resetting password:', err);
+      if (err.response?.status === 403) {
+        setError('Access denied. Please ensure you have HR role permissions.');
+        localStorage.removeItem('token');
+        setIsAuthenticated(false);
+      } else {
+        setError(err.response?.data || '❌ Failed to update password.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2>Employee Management</h2>
-        <p>Welcome, {user?.email}</p>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <h2 className="text-2xl font-bold text-center mb-6">Employee Management</h2>
 
-        {/* Add/Edit Form */}
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <input
-            type="text"
-            name="employeeId"
-            placeholder="Employee ID"
-            value={formData.employeeId}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-          <input
-            type="text"
-            name="name"
-            placeholder="Full Name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="User Email"
-            value={formData.user.email}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password (optional)"
-            value={formData.user.password || ""}
-            onChange={handleChange}
-            style={styles.input}
-          />
-          <input
-            type="text"
-            name="department"
-            placeholder="Department"
-            value={formData.department}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-          <input
-            type="text"
-            name="deptRole"
-            placeholder="Role"
-            value={formData.deptRole}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleChange}
-            style={styles.input}
+      {!isAuthenticated ? (
+        <div className="bg-white p-6 rounded-xl shadow-md max-w-3xl mx-auto text-center">
+          <p className="text-red-600 mb-4">{error || 'Please log in to access employee management.'}</p>
+          <button
+            onClick={handleLogin}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
           >
-            <option value="ACTIVE">ACTIVE</option>
-            <option value="INACTIVE">INACTIVE</option>
-          </select>
-          <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? "Saving..." : editEmployee ? "Update Employee" : "Add Employee"}
+            Log In
           </button>
-        </form>
-        {message && <p style={{ marginTop: "10px" }}>{message}</p>}
+        </div>
+      ) : (
+        <>
+          {loading && <p className="text-center text-blue-600">Loading...</p>}
+          {error && <p className="text-red-600 text-center mb-4">{error}</p>}
+          {message && <p className="text-green-600 text-center mb-4">{message}</p>}
 
-        {/* Employee List */}
-        <h3 style={{ marginTop: "30px" }}>All Employees</h3>
-        {employees.length > 0 ? (
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Department</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map(emp => (
-                <tr key={emp.id}>
-                  <td>{emp.employeeId}</td>
-                  <td>{emp.name}</td>
-                  <td>{emp.user?.email}</td>
-                  <td>{emp.department}</td>
-                  <td>{emp.deptRole}</td>
-                  <td>{emp.status}</td>
-                  <td>
-                    <button style={styles.editBtn} onClick={() => setEditEmployee(emp)}>Edit</button>
-                    <button style={styles.deleteBtn} onClick={() => handleDelete(emp.id)}>Delete</button>
-                  </td>
+          {/* Employee Form */}
+          <form
+            onSubmit={handleSubmit}
+            className="bg-white p-6 rounded-xl shadow-md mb-6 max-w-3xl mx-auto space-y-4"
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <input
+                type="text"
+                name="employeeId"
+                value={formData.employeeId}
+                onChange={handleChange}
+                placeholder="Employee ID"
+                className="border rounded p-2"
+                required
+                disabled={loading}
+              />
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Full Name"
+                className="border rounded p-2"
+                required
+                disabled={loading}
+              />
+              <select
+                name="department"
+                value={formData.department}
+                onChange={handleChange}
+                className="border rounded p-2"
+                required
+                disabled={loading}
+              >
+                <option value="">Select Department</option>
+                {departments.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+              <select
+                name="deptRole"
+                value={formData.deptRole}
+                onChange={handleChange}
+                className="border rounded p-2"
+                required
+                disabled={loading}
+              >
+                <option value="">Select Role</option>
+                {roles.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="date"
+                name="dateOfJoining"
+                value={formData.dateOfJoining}
+                onChange={handleChange}
+                className="border rounded p-2"
+                disabled={loading}
+              />
+              <select
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                className="border rounded p-2"
+                required
+                disabled={loading}
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+              </select>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="User Email"
+                className="border rounded p-2"
+                required
+                disabled={loading}
+              />
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder={editing ? 'Enter new password (optional)' : 'Password'}
+                className="border rounded p-2"
+                disabled={loading}
+                required={!editing}
+              />
+            </div>
+            <div className="flex justify-center gap-4 mt-4">
+              <button
+                type="submit"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:bg-gray-400"
+                disabled={loading}
+              >
+                {editing ? 'Update Employee' : 'Add Employee'}
+              </button>
+              {editing && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(false);
+                    setFormData({
+                      id: '',
+                      employeeId: '',
+                      name: '',
+                      department: '',
+                      deptRole: '',
+                      dateOfJoining: '',
+                      status: 'ACTIVE',
+                      email: '',
+                      password: '',
+                    });
+                  }}
+                  className="bg-gray-400 hover:bg-gray-500 text-white px-6 py-2 rounded-lg disabled:bg-gray-300"
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
+
+          {/* Employee List */}
+          <div className="bg-white rounded-xl shadow-md p-6 max-w-5xl mx-auto">
+            <h3 className="text-xl font-semibold mb-4">Employee List</h3>
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100 text-left">
+                  <th className="border p-2">Emp ID</th>
+                  <th className="border p-2">Name</th>
+                  <th className="border p-2">Department</th>
+                  <th className="border p-2">Role</th>
+                  <th className="border p-2">Date of Joining</th>
+                  <th className="border p-2">Status</th>
+                  <th className="border p-2">Email</th>
+                  <th className="border p-2 text-center">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p>No employees found.</p>
-        )}
-      </div>
+              </thead>
+              <tbody>
+                {employees.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="text-center text-gray-500 p-4">
+                      No employees found.
+                    </td>
+                  </tr>
+                ) : (
+                  employees.map((emp) => (
+                    <tr key={emp.id} className="hover:bg-gray-50">
+                      <td className="border p-2">{emp.employeeId}</td>
+                      <td className="border p-2">{emp.name}</td>
+                      <td className="border p-2">{emp.department || '-'}</td>
+                      <td className="border p-2">{emp.deptRole || '-'}</td>
+                      <td className="border p-2">{emp.dateOfJoining || '-'}</td>
+                      <td className="border p-2">{emp.status}</td>
+                      <td className="border p-2">{emp.user?.email}</td>
+                      <td className="border p-2 text-center space-x-2">
+                        <button
+                          onClick={() => handleEdit(emp)}
+                          className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded disabled:bg-gray-300"
+                          disabled={loading}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(emp.id)}
+                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded disabled:bg-gray-300"
+                          disabled={loading}
+                        >
+                          Delete
+                        </button>
+                        <button
+                          onClick={() => handleResetPassword(emp.id, emp.user?.email)}
+                          className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded disabled:bg-gray-300"
+                          disabled={loading}
+                        >
+                          Reset Password
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
-};
-
-const styles = {
-  container: { backgroundColor: "#e3f2fd", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", boxSizing: "border-box" },
-  card: { backgroundColor: "#fff", padding: "40px", borderRadius: "10px", boxShadow: "0 0 10px rgba(0,0,0,0.1)", width: "100%", maxWidth: "900px", textAlign: "center" },
-  form: { display: "flex", flexDirection: "column", gap: "10px", marginTop: "10px" },
-  input: { padding: "10px", borderRadius: "5px", border: "1px solid #ccc", fontSize: "16px" },
-  button: { padding: "10px", borderRadius: "5px", border: "none", backgroundColor: "#1976d2", color: "#fff", fontSize: "16px", cursor: "pointer" },
-  table: { width: "100%", borderCollapse: "collapse", marginTop: "20px" },
-  editBtn: { marginRight: "10px", backgroundColor: "#ffc107", color: "#000", padding: "5px 10px", border: "none", borderRadius: "5px", cursor: "pointer" },
-  deleteBtn: { backgroundColor: "#dc3545", color: "#fff", padding: "5px 10px", border: "none", borderRadius: "5px", cursor: "pointer" },
 };
 
 export default EmpManagement;

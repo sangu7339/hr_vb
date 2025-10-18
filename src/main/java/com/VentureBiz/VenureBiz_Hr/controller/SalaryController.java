@@ -15,6 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/salary")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:5174")
 public class SalaryController {
 
     private final EmployeeRepository employeeRepository;
@@ -23,7 +24,7 @@ public class SalaryController {
     // ✅ Generate Salary for an Employee (HR only)
     @PostMapping("/generate")
     @PreAuthorize("hasRole('HR')")
-    public Salary generateSalary(@RequestParam Long employeeId,
+    public Salary generateSalary(@RequestParam String employeeCode,
                                  @RequestParam int month,
                                  @RequestParam int year,
                                  @RequestParam double basicPay,
@@ -33,7 +34,7 @@ public class SalaryController {
                                  @RequestParam String bankName,
                                  @RequestParam String accountNumber) {
 
-        Employee employee = employeeRepository.findById(employeeId)
+        Employee employee = employeeRepository.findByEmployeeId(employeeCode)
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
 
         double netPay = basicPay + hra + allowances - deductions;
@@ -72,10 +73,20 @@ public class SalaryController {
     }
 
     // ✅ Employee — View Own Salary / Payslip
+ // ✅ Employee — View Own Salary / Payslip using employee ID
+//    @GetMapping("/my")
+//    @PreAuthorize("hasRole('EMPLOYEE')")
+//    public List<Salary> mySalary(@RequestParam Long employeeId) {
+//        Employee employee = employeeRepository.findById(employeeId)
+//                .orElseThrow(() -> new RuntimeException("Employee not found"));
+//
+//        return salaryRepository.findByEmployee(employee);
+//    }
+
     @GetMapping("/my")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public List<Salary> mySalary(@RequestParam Long employeeId) {
-        Employee employee = employeeRepository.findById(employeeId)
+    public List<Salary> mySalary(@RequestParam String employeeCode) {
+        Employee employee = employeeRepository.findByEmployeeId(employeeCode)
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
 
         return salaryRepository.findByEmployee(employee);
@@ -91,7 +102,7 @@ public class SalaryController {
     // ✅ HR — Apply Hike for Employee
     @PostMapping("/hike")
     @PreAuthorize("hasRole('HR')")
-    public Salary applyHike(@RequestParam Long employeeId,
+    public Salary applyHike(@RequestParam String employeeCode,
                             @RequestParam double newBasic,
                             @RequestParam double newHra,
                             @RequestParam double newAllowances,
@@ -101,7 +112,7 @@ public class SalaryController {
                             @RequestParam String bankName,
                             @RequestParam String accountNumber) {
 
-        Employee employee = employeeRepository.findById(employeeId)
+        Employee employee = employeeRepository.findByEmployeeId(employeeCode)
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
 
         double netPay = newBasic + newHra + newAllowances - newDeductions;
