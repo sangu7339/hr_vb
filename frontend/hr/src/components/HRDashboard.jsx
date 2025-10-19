@@ -75,211 +75,62 @@ function HRDashboard() {
   const userEmail = localStorage.getItem("email");
 
   const tabs = [
-    { key: "overview", label: "Overview", icon: "🏠" },
     { key: "employees", label: "Employee Management", icon: "👥" },
     { key: "attendance", label: "Attendance Tracking", icon: "⏰" },
     { key: "leaves", label: "Leave Management", icon: "📅" },
+    { key: "salary", label: "Salary Management", icon: "💰" },
     { key: "announcements", label: "Announcements & Notices", icon: "🔔" },
-    { key: "calendar", label: "Calendar & Events", icon: "📆" }, // new calendar tab
+    { key: "calendar", label: "Calendar & Events", icon: "📆" },
   ];
 
-  // const renderTab = () => {
-  //   switch (activeTab) {
-  //     case "employees":
-  //       return <EmpManagement />;
-  //     case "attendance":
-  //       return <Attendance />;
-  //     case "leaves":
-  //       return <LeaveManagement />;
-  //     case "salary":
-  //       return <HRSalaryManagement />;
-  //     case "announcements":
-  //       return <AnnouncementManagement />;
-  //     case "calendar":
-  //       return <HolidayCalendar />;
-  //     default:
-  //       return (
-  //         <div className="overview-content">
-  //           <h2>Welcome, {userEmail || "HR Admin"} 👋</h2>
-  //           <p>Select a module from the menu above to get started.</p>
-  //         </div>
-  //       );
-  //   }
-  // };
   const renderTab = () => {
-  switch (activeTab) {
-    case "employees":
-      return <EmpManagement />;
-    case "attendance":
-      return <Attendance />;
-    case "leaves":
-      return <LeaveManagement />;
-    case "salary":
-      return <HRSalaryManagement />;
-    case "announcements":
-      // Pass user object with email to AnnouncementManagement
-      return <AnnouncementManagement user={{ email: userEmail }} />;
-    case "calendar":
-      return <HolidayCalendar />;
-    default:
-      return (
-        <div className="overview-content">
-          <h2>Welcome, {userEmail || "HR Admin"} 👋</h2>
-          <p>Select a module from the menu above to get started.</p>
-        </div>
-      );
-  }
-};
-
+    switch (activeTab) {
+      case "employees":
+        return <EmpManagement />;
+      case "attendance":
+        return <Attendance />;
+      case "leaves":
+        return <LeaveManagement />;
+      case "salary":
+        return <HRSalaryManagement />;
+      case "announcements":
+        return <AnnouncementManagement user={{ email: userEmail }} />;
+      case "calendar":
+        return <HolidayCalendar />;
+      default:
+        return (
+          <div className="overview-content">
+            {/* <h2>Welcome, {userEmail || "HR Admin"} 👋</h2> */}
+            <h1>Welcome Rajesh......!</h1>
+            <p>Select a module from the menu above to get started.</p>
+          </div>
+        );
+    }
+  };
 
   return (
     <>
       <style>{`
-        * {
-          box-sizing: border-box;
-          font-family: "Segoe UI", Roboto, sans-serif;
-        }
-
-        html, body, #root {
-          margin: 0;
-          padding: 0;
-          height: 100%;
-          width: 100%;
-          overflow: hidden;
-          background-color: #2a4969ff;
-        }
-
-        .dashboard {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-          width: 100%;
-        }
-
-        /* Header */
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 16px 32px;
-          background-color: #fff;
-          border-bottom: 1px solid #e5e7eb;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-          flex-shrink: 0;
-        }
-
-        .header-left h1 {
-          font-size: 22px;
-          margin: 0;
-          font-weight: 600;
-          color: #111827;
-        }
-
-        .header-actions {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .action-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          background: #fff;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          padding: 8px 14px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          font-size: 14px;
-        }
-
-        .action-btn:hover {
-          background: #f9fafb;
-        }
-
-        .logout-btn {
-          background-color: #ef4444;
-          color: white;
-          border: none;
-        }
-
-        .logout-btn:hover {
-          background-color: #dc2626;
-        }
-
-        /* Tabs */
-        .tab-bar {
-          display: flex;
-          justify-content: space-evenly;
-          align-items: center;
-          padding: 0 32px;
-          background: #fff;
-          border-bottom: 1px solid #e5e7eb;
-          overflow-x: auto;
-          flex-shrink: 0;
-        }
-
-        .tab-item {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 16px 0;
-          font-size: 15px;
-          color: #6b7280;
-          cursor: pointer;
-          border-bottom: 2px solid transparent;
-          white-space: nowrap;
-          transition: all 0.2s ease;
-        }
-
-        .tab-item:hover {
-          color: #111827;
-        }
-
-        .tab-item.active {
-          color: #111827;
-          font-weight: 600;
-          border-bottom: 2px solid #111827;
-        }
-
-        /* Content area */
-        .content {
-          flex: 1;
-          background-color: #f9fafb;
-          padding: 24px 32px;
-          overflow-y: auto;
-          min-height: 0;
-        }
-
-        .overview-content {
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          height: 100%;
-          text-align: center;
-          color: #374151;
-        }
-
-        .overview-content h2 {
-          font-size: 26px;
-          margin-bottom: 10px;
-        }
-
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-          background: #d1d5db;
-          border-radius: 8px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-          background: #9ca3af;
-        }
+        * { box-sizing: border-box; font-family: "Segoe UI", Roboto, sans-serif; }
+        html, body, #root { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #2a4969ff; }
+        .dashboard { display: flex; flex-direction: column; height: 100%; width: 100%; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 32px; background-color: #fff; border-bottom: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(151, 33, 70, 0.05); flex-shrink: 0; }
+        .header-left h1 { font-size: 22px; margin: 0; font-weight: 600; color: #190207d2; }
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        .action-btn { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 14px; cursor: pointer; transition: all 0.2s ease; font-size: 14px; }
+        .action-btn:hover { background: #f9fafb; }
+        .logout-btn { background-color: #ef4444; color: white; border: none; }
+        .logout-btn:hover { background-color: #dc2626; }
+        .tab-bar { display: flex; justify-content: space-evenly; align-items: center; padding: 0 32px; background: #fff; border-bottom: 1px solid #e5e7eb; overflow-x: auto; flex-shrink: 0; }
+        .tab-item { display: flex; align-items: center; gap: 8px; padding: 16px 0; font-size: 15px; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s ease; }
+        .tab-item:hover { color: #111827; }
+        .tab-item.active { color: #111827; font-weight: 600; border-bottom: 2px solid #111827; }
+        .content { flex: 1; background-color: #f9fafb; padding: 24px 32px; overflow-y: auto; min-height: 0; }
+        .overview-content { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; text-align: center; color: #374151; }
+        .overview-content h2 { font-size: 26px; margin-bottom: 10px; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 8px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
       `}</style>
 
       <div className="dashboard">
@@ -289,10 +140,7 @@ function HRDashboard() {
             <h1>Core HR Dashboard</h1>
           </div>
           <div className="header-actions">
-            <button
-              className="action-btn"
-              onClick={() => setActiveTab("calendar")}
-            >
+            <button className="action-btn" onClick={() => setActiveTab("calendar")}>
               📆 Calendar & Events
             </button>
             <button className="action-btn">👤 {userEmail || "HR Admin"}</button>
@@ -301,7 +149,7 @@ function HRDashboard() {
               onClick={() => {
                 if (window.confirm("Are you sure you want to logout?")) {
                   localStorage.clear();
-                  window.location.href = "/login";
+                  window.location.reload(); // back to login
                 }
               }}
             >
@@ -331,4 +179,4 @@ function HRDashboard() {
   );
 }
 
-export default HRDashboard;
+export default HRDashboard;  

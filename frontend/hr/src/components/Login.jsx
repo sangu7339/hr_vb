@@ -10,6 +10,7 @@ function Login({ onLogin }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+
     if (!email || !password) {
       Swal.fire("Warning", "Please fill in all fields", "warning");
       return;
@@ -17,44 +18,45 @@ function Login({ onLogin }) {
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8080/api/auth/login", {
+      const res = await fetch("http://localhost:8080/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
-      let data = {};
-      try {
-        const text = await response.text();
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        data = {};
-      }
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : {};
 
-      if (!response.ok) throw new Error(data.message || "Login failed.");
+      if (!res.ok) throw new Error(data.message || "Login failed");
 
       const { token, role, employeeCode } = data;
 
-      // Validate token and role
-      if (!token || !role) throw new Error("Invalid response from server");
+      if (!token || !role) throw new Error("Invalid server response");
 
-      // Store token and role for all users
+      // Save token and role
       localStorage.setItem("token", token);
       localStorage.setItem("email", email);
       localStorage.setItem("role", role);
 
-      // Store employeeCode only for EMPLOYEE role
+      // Save employeeCode only if user is EMPLOYEE
       if (role === "EMPLOYEE" && employeeCode) {
         localStorage.setItem("employeeCode", employeeCode);
       }
 
       onLogin({ email, role, token, employeeCode });
 
-      await Swal.fire("Success", "Login successful", "success");
+      await Swal.fire("Success", "Login successful ✅", "success");
 
-      navigate(role === "HR" ? "/hr-dashboard" : "/employee-dashboard");
+      // Navigate based on role
+      if (role === "HR") {
+        navigate("/hr-dashboard");
+      } else if (role === "EMPLOYEE") {
+        navigate("/employee-dashboard");
+      } else {
+        navigate("/"); // fallback
+      }
     } catch (err) {
-      Swal.fire("Error", err.message, "error");
+      Swal.fire("Error", err.message || "Login failed ❌", "error");
     } finally {
       setLoading(false);
     }
@@ -71,6 +73,7 @@ function Login({ onLogin }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             style={styles.input}
+            required
           />
           <input
             type="password"
@@ -78,6 +81,7 @@ function Login({ onLogin }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={styles.input}
+            required
           />
           <button type="submit" style={styles.button} disabled={loading}>
             {loading ? "Logging in..." : "Login"}

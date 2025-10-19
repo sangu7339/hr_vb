@@ -9,7 +9,7 @@ const HRSalaryManagement = () => {
   const [editingSalary, setEditingSalary] = useState(null);
 
   const [formData, setFormData] = useState({
-    employeeCode: "", // ⚡ changed from employeeId
+    employeeCode: "",
     basicPay: "",
     hra: "",
     allowances: "",
@@ -30,9 +30,19 @@ const HRSalaryManagement = () => {
   });
 
   const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role"); // Get role from localStorage
   const axiosConfig = { headers: { Authorization: `Bearer ${token}` } };
 
-  // ✅ Fetch all salaries by month/year
+  // Role-based access: show message if not HR
+  if (role !== "HR") {
+    return (
+      <p style={{ color: "red", fontWeight: "bold", textAlign: "center", marginTop: "50px" }}>
+        Access denied ❌. Make sure you are logged in as HR.
+      </p>
+    );
+  }
+
+  // Fetch all salaries by month/year
   const fetchSalaries = async () => {
     setLoading(true);
     setError(null);
@@ -54,7 +64,7 @@ const HRSalaryManagement = () => {
     fetchSalaries();
   }, [formData.month, formData.year]);
 
-  // ✅ Handle form inputs
+  // Handle form inputs
   const handleChange = (e) => {
     const { name, value } = e.target;
     const numericFields = ["basicPay", "hra", "allowances", "deductions", "month", "year"];
@@ -73,12 +83,12 @@ const HRSalaryManagement = () => {
     });
   };
 
-  // ✅ Add a new salary
+  // Add a new salary
   const handleAddPayslip = async (e) => {
     e.preventDefault();
     try {
       await axios.post(`http://localhost:8080/api/salary/generate`, null, {
-        params: formData, // now uses employeeCode
+        params: formData,
         ...axiosConfig,
       });
       alert("Payslip added successfully ✅");
@@ -90,7 +100,7 @@ const HRSalaryManagement = () => {
     }
   };
 
-  // ✅ Mark as paid
+  // Mark as paid
   const markPaid = async (salaryId) => {
     try {
       await axios.put(
@@ -106,7 +116,7 @@ const HRSalaryManagement = () => {
     }
   };
 
-  // ✅ Edit salary
+  // Edit salary
   const startEdit = (salary) => {
     setEditingSalary(salary);
     setEditFormData({
@@ -121,13 +131,13 @@ const HRSalaryManagement = () => {
 
   const cancelEdit = () => setEditingSalary(null);
 
-  // ✅ Apply hike (update)
+  // Apply hike (update)
   const handleUpdateSalary = async (e) => {
     e.preventDefault();
     try {
       await axios.post(`http://localhost:8080/api/salary/hike`, null, {
         params: {
-          employeeCode: editingSalary.employee.employeeId, // ⚡ use employeeCode
+          employeeCode: editingSalary.employee.employeeId,
           newBasic: editFormData.basicPay,
           newHra: editFormData.hra,
           newAllowances: editFormData.allowances,
@@ -148,24 +158,22 @@ const HRSalaryManagement = () => {
     }
   };
 
-  // ✅ UI States
-  if (loading) return <p>Loading salary records...</p>;
-  if (error) return <p>{error}</p>;
+  if (loading) return <p className="loading">Loading salary records...</p>;
+  if (error) return <p className="error">{error}</p>;
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">💼 HR Salary Management</h2>
+    <div className="container">
+      <h2 className="title">💼 HR Salary Management</h2>
 
       <button
-        className="bg-blue-600 text-white px-4 py-2 rounded mb-4"
+        className="toggle-button"
         onClick={() => setShowAddPayslip(!showAddPayslip)}
       >
         {showAddPayslip ? "Cancel" : "Add Payslip"}
       </button>
 
-      {/* Add Salary Form */}
       {showAddPayslip && (
-        <form className="flex flex-wrap gap-3 mb-6" onSubmit={handleAddPayslip}>
+        <form className="form" onSubmit={handleAddPayslip}>
           {[
             { name: "employeeCode", placeholder: "Employee Code", type: "text" },
             { name: "basicPay", placeholder: "Basic Pay", type: "number" },
@@ -183,65 +191,52 @@ const HRSalaryManagement = () => {
               value={formData[f.name]}
               onChange={handleChange}
               required
-              className="border p-2 rounded"
             />
           ))}
-          <button
-            type="submit"
-            className="bg-green-600 text-white px-4 py-2 rounded"
-          >
-            Save Payslip
-          </button>
+          <button type="submit">Save Payslip</button>
         </form>
       )}
 
-      {/* Salary Table */}
-      <table className="w-full border-collapse">
+      <table className="table">
         <thead>
-          <tr className="bg-gray-200">
-            <th className="border px-3 py-2">Employee</th>
-            <th className="border px-3 py-2">Basic</th>
-            <th className="border px-3 py-2">HRA</th>
-            <th className="border px-3 py-2">Allowances</th>
-            <th className="border px-3 py-2">Deductions</th>
-            <th className="border px-3 py-2">Net Pay</th>
-            <th className="border px-3 py-2">Status</th>
-            <th className="border px-3 py-2">Actions</th>
+          <tr>
+            <th>Employee</th>
+            <th>Basic</th>
+            <th>HRA</th>
+            <th>Allowances</th>
+            <th>Deductions</th>
+            <th>Net Pay</th>
+            <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {salaries.map((s) => (
             <tr key={s.id}>
-              <td className="border px-3 py-2">{s.employee?.name}</td>
-              <td className="border px-3 py-2">{s.basicPay}</td>
-              <td className="border px-3 py-2">{s.hra}</td>
-              <td className="border px-3 py-2">{s.allowances}</td>
-              <td className="border px-3 py-2">{s.deductions}</td>
-              <td className="border px-3 py-2 font-semibold">{s.netPay}</td>
+              <td>{s.employee?.name}</td>
+              <td>{s.basicPay}</td>
+              <td>{s.hra}</td>
+              <td>{s.allowances}</td>
+              <td>{s.deductions}</td>
+              <td style={{ fontWeight: "bold" }}>{s.netPay}</td>
               <td
-                className={`border px-3 py-2 ${
+                className={
                   s.status === "PAID"
-                    ? "text-green-600"
+                    ? "status-paid"
                     : s.status === "PENDING"
-                    ? "text-yellow-600"
-                    : "text-blue-600"
-                }`}
+                    ? "status-pending"
+                    : "status-processing"
+                }
               >
                 {s.status}
               </td>
-              <td className="border px-3 py-2 flex gap-2">
+              <td className="action-buttons">
                 {s.status !== "PAID" && (
                   <>
-                    <button
-                      onClick={() => markPaid(s.id)}
-                      className="bg-green-600 text-white px-2 py-1 rounded"
-                    >
+                    <button onClick={() => markPaid(s.id)} className="mark-paid">
                       Mark Paid
                     </button>
-                    <button
-                      onClick={() => startEdit(s)}
-                      className="bg-yellow-500 text-white px-2 py-1 rounded"
-                    >
+                    <button onClick={() => startEdit(s)} className="edit">
                       Edit
                     </button>
                   </>
@@ -252,13 +247,10 @@ const HRSalaryManagement = () => {
         </tbody>
       </table>
 
-      {/* Edit Salary Form */}
       {editingSalary && (
-        <div className="mt-6 border p-4 rounded bg-gray-50">
-          <h3 className="font-semibold mb-3">
-            Editing Salary for {editingSalary.employee?.name}
-          </h3>
-          <form className="flex flex-wrap gap-3" onSubmit={handleUpdateSalary}>
+        <div className="edit-form">
+          <h3>Editing Salary for {editingSalary.employee?.name}</h3>
+          <form className="form" onSubmit={handleUpdateSalary}>
             {[
               { name: "basicPay", label: "Basic Pay" },
               { name: "hra", label: "HRA" },
@@ -275,20 +267,10 @@ const HRSalaryManagement = () => {
                 onChange={handleEditChange}
                 placeholder={f.label}
                 required
-                className="border p-2 rounded"
               />
             ))}
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-4 py-2 rounded"
-            >
-              Update
-            </button>
-            <button
-              type="button"
-              onClick={cancelEdit}
-              className="bg-gray-500 text-white px-4 py-2 rounded"
-            >
+            <button type="submit">Update</button>
+            <button type="button" onClick={cancelEdit}>
               Cancel
             </button>
           </form>

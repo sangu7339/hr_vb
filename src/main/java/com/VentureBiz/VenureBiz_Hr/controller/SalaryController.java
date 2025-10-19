@@ -1,4 +1,6 @@
 package com.VentureBiz.VenureBiz_Hr.controller;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import com.VentureBiz.VenureBiz_Hr.model.Employee;
 import com.VentureBiz.VenureBiz_Hr.model.Salary;
@@ -21,9 +23,48 @@ public class SalaryController {
     private final EmployeeRepository employeeRepository;
     private final SalaryRepository salaryRepository;
 
-    // ✅ Generate Salary for an Employee (HR only)
+//    // ✅ Generate Salary for an Employee (HR only)
+//    @PostMapping("/generate")
+//    @PreAuthorize("hasRole('HR')")
+//    public Salary generateSalary(@RequestParam String employeeCode,
+//                                 @RequestParam int month,
+//                                 @RequestParam int year,
+//                                 @RequestParam double basicPay,
+//                                 @RequestParam double hra,
+//                                 @RequestParam double allowances,
+//                                 @RequestParam double deductions,
+//                                 @RequestParam String bankName,
+//                                 @RequestParam String accountNumber) {
+//
+//        Employee employee = employeeRepository.findByEmployeeId(employeeCode)
+//                .orElseThrow(() -> new RuntimeException("Employee not found"));
+//
+//        double netPay = basicPay + hra + allowances - deductions;
+//
+//        // Check if salary already exists for this month
+//        salaryRepository.findByEmployeeAndMonthAndYear(employee, month, year)
+//                .ifPresent(s -> { throw new RuntimeException("Salary already generated for this month"); });
+//
+//        Salary salary = Salary.builder()
+//                .employee(employee)
+//                .basicPay(basicPay)
+//                .hra(hra)
+//                .allowances(allowances)
+//                .deductions(deductions)
+//                .netPay(netPay)
+//                .month(month)
+//                .year(year)
+//                .payslipDate(LocalDate.now())
+//                .status(SalaryStatus.PENDING)
+//                .bankName(bankName)
+//                .accountNumber(accountNumber)
+//                .build();
+//
+//        return salaryRepository.save(salary);
+//    }
     @PostMapping("/generate")
     @PreAuthorize("hasRole('HR')")
+   // @PreAuthorize("hasAuthority('ROLE_HR')")
     public Salary generateSalary(@RequestParam String employeeCode,
                                  @RequestParam int month,
                                  @RequestParam int year,
@@ -34,15 +75,26 @@ public class SalaryController {
                                  @RequestParam String bankName,
                                  @RequestParam String accountNumber) {
 
+        // 1. Find Employee
         Employee employee = employeeRepository.findByEmployeeId(employeeCode)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
+                .orElseThrow(() -> 
+                    new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Employee not found with code: " + employeeCode
+                    )
+                );
 
+        // 2. Check if salary already exists
+        salaryRepository.findByEmployeeAndMonthAndYear(employee, month, year)
+                .ifPresent(s -> {
+                    throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Salary already generated for this month"
+                    );
+                });
+
+        // 3. Calculate net pay
         double netPay = basicPay + hra + allowances - deductions;
 
-        // Check if salary already exists for this month
-        salaryRepository.findByEmployeeAndMonthAndYear(employee, month, year)
-                .ifPresent(s -> { throw new RuntimeException("Salary already generated for this month"); });
-
+        // 4. Build salary record
         Salary salary = Salary.builder()
                 .employee(employee)
                 .basicPay(basicPay)
@@ -58,8 +110,10 @@ public class SalaryController {
                 .accountNumber(accountNumber)
                 .build();
 
+        // 5. Save and return
         return salaryRepository.save(salary);
     }
+
 
     // ✅ HR — Approve / Mark Salary as Paid
     @PutMapping("/{salaryId}/pay")

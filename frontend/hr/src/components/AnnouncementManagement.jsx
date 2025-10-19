@@ -76,7 +76,7 @@ const AnnouncementManagement = ({ user }) => {
   return (
     <div style={styles.container}>
       <ToastContainer position="top-right" autoClose={3000} />
-      <h2 style={styles.heading}>Announcements</h2>
+      {/* <h2 style={styles.heading}>Announcements</h2> */}
 
       <div style={{ marginBottom: 20, textAlign: "center" }}>
         <button style={styles.addBtn} onClick={() => setIsModalOpen(true)}>

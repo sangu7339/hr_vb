@@ -33,7 +33,8 @@ const EmpManagement = () => {
 
   // Ensure these match backend accepted values
   const departments = ['IT', 'MARKETING', 'FINANCE', 'OPERATIONS', 'HR'];
-  const roles = ['DEVELOPER', 'MANAGER', 'DESIGNER', 'HR_EXECUTIVE', 'TEAM_LEAD'];
+  // const roles = ['DEVELOPER', 'MANAGER', 'DESIGNER', 'HR_EXECUTIVE', 'TEAM_LEAD'];
+const roles = ['DEVELOPER', 'MANAGER', 'DESIGNER', 'HR_EXECUTIVE', 'TEAM_LEAD', 'QA'];
 
   const handleLogin = () => {
     const token = prompt('Please enter your JWT token:');
