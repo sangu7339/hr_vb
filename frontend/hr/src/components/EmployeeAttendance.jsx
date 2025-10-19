@@ -11,6 +11,7 @@ const EmployeeAttendance = ({ user }) => {
   const token = localStorage.getItem("token");
   const axiosConfig = { headers: { Authorization: `Bearer ${token}` } };
 
+  // --- Fetch attendance data ---
   const fetchAttendance = async () => {
     if (!user?.email) return;
     try {
@@ -32,6 +33,7 @@ const EmployeeAttendance = ({ user }) => {
     fetchAttendance();
   }, [month, year]);
 
+  // --- Check-in / Check-out ---
   const handleCheckIn = async () => {
     try {
       const res = await axios.post(
@@ -62,22 +64,33 @@ const EmployeeAttendance = ({ user }) => {
     }
   };
 
+  // --- Helper: Status color ---
   const getStatusColor = (status) => {
     switch (status) {
-      case "PRESENT":
-        return "#16a34a";
-      case "LATE":
-        return "#f59e0b";
-      case "HALF_DAY":
-        return "#eab308";
-      case "ABSENT":
-        return "#dc2626";
-      case "PENDING":
-        return "#3b82f6";
-      default:
-        return "#6b7280";
+      case "PRESENT": return "#16a34a";
+      case "LATE": return "#f59e0b";
+      case "HALF_DAY": return "#eab308";
+      case "ABSENT": return "#dc2626";
+      case "PENDING": return "#3b82f6";
+      default: return "#6b7280";
     }
   };
+
+  // --- Enhanced summary ---
+  const summary = attendance.reduce(
+    (acc, record) => {
+      switch (record.status) {
+        case "PRESENT": acc.present++; break;
+        case "LATE": acc.late++; break;
+        case "HALF_DAY": acc.halfDay++; break;
+        case "ABSENT": acc.absent++; break;
+        case "PENDING": acc.pending++; break;
+        default: break;
+      }
+      return acc;
+    },
+    { present: 0, late: 0, halfDay: 0, absent: 0, pending: 0 }
+  );
 
   return (
     <div style={styles.container}>
@@ -86,6 +99,7 @@ const EmployeeAttendance = ({ user }) => {
         <p>Welcome, {user.email}</p>
       </div>
 
+      {/* --- Month & Year selectors --- */}
       <div style={styles.controls}>
         <select
           value={month}
@@ -111,6 +125,7 @@ const EmployeeAttendance = ({ user }) => {
         </button>
       </div>
 
+      {/* --- Check-in / Check-out buttons --- */}
       <div style={styles.actions}>
         <button
           onClick={handleCheckIn}
@@ -126,6 +141,16 @@ const EmployeeAttendance = ({ user }) => {
         </button>
       </div>
 
+      {/* --- Summary Cards --- */}
+      <div style={styles.summaryContainer}>
+        <SummaryCard title="Present" count={summary.present} color="#16a34a" />
+        <SummaryCard title="Late" count={summary.late} color="#f59e0b" />
+        <SummaryCard title="Half Day" count={summary.halfDay} color="#eab308" />
+        <SummaryCard title="Absent" count={summary.absent} color="#dc2626" />
+        <SummaryCard title="Pending" count={summary.pending} color="#3b82f6" />
+      </div>
+
+      {/* --- Attendance Table --- */}
       {loading ? (
         <p style={{ textAlign: "center", marginTop: 20 }}>Loading...</p>
       ) : (
@@ -180,6 +205,15 @@ const EmployeeAttendance = ({ user }) => {
   );
 };
 
+// --- Summary Card Component ---
+const SummaryCard = ({ title, count, color }) => (
+  <div style={{ ...styles.summaryCard, backgroundColor: `${color}20` }}>
+    <h4 style={{ color }}>{title}</h4>
+    <p style={{ color, fontWeight: "bold", fontSize: 16 }}>{count}</p>
+  </div>
+);
+
+// --- Styles ---
 const styles = {
   container: {
     background: "#fff",
@@ -195,43 +229,14 @@ const styles = {
     gap: 10,
     marginBottom: 20,
   },
-  select: {
-    padding: 8,
-    borderRadius: 6,
-    border: "1px solid #ccc",
-  },
-  input: {
-    padding: 8,
-    borderRadius: 6,
-    border: "1px solid #ccc",
-    width: 100,
-  },
-  refreshBtn: {
-    padding: "8px 14px",
-    borderRadius: 6,
-    border: "none",
-    background: "#6b7280",
-    color: "white",
-    cursor: "pointer",
-  },
-  actions: {
-    display: "flex",
-    justifyContent: "center",
-    gap: 12,
-    marginBottom: 20,
-  },
-  actionBtn: {
-    color: "white",
-    padding: "10px 16px",
-    border: "none",
-    borderRadius: 8,
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
+  select: { padding: 8, borderRadius: 6, border: "1px solid #ccc" },
+  input: { padding: 8, borderRadius: 6, border: "1px solid #ccc", width: 100 },
+  refreshBtn: { padding: "8px 14px", borderRadius: 6, border: "none", background: "#6b7280", color: "white", cursor: "pointer" },
+  actions: { display: "flex", justifyContent: "center", gap: 12, marginBottom: 20 },
+  actionBtn: { color: "white", padding: "10px 16px", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 },
+  table: { width: "100%", borderCollapse: "collapse" },
+  summaryContainer: { display: "flex", gap: 12, marginBottom: 20, justifyContent: "center", flexWrap: "wrap" },
+  summaryCard: { padding: 12, borderRadius: 8, textAlign: "center", minWidth: 80 },
 };
 
 export default EmployeeAttendance;

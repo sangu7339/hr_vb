@@ -27,7 +27,8 @@ public class AttendanceController {
     private static final LocalTime ABSENT_LIMIT = LocalTime.of(14, 0);
     private static final LocalTime CHECKOUT_FULL_DAY = LocalTime.of(18, 0);
 
-    // ✅ 1. EMPLOYEE — Check-In
+    // =================== EMPLOYEE OPERATIONS ===================
+
     @PostMapping("/checkin")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String checkIn(@RequestParam String email) {
@@ -35,25 +36,24 @@ public class AttendanceController {
                 .orElseThrow(() -> new RuntimeException("User not found: " + email));
 
         LocalDate today = LocalDate.now();
-        Optional<Attendance> existing = attendanceRepository.findByUserAndDate(user, today);
+        DayOfWeek day = today.getDayOfWeek();
+        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY)
+            return "You cannot check in on weekends!";
 
-        if (existing.isPresent()) {
-            return "Already checked in today!";
-        }
+        Optional<Attendance> existing = attendanceRepository.findByUserAndDate(user, today);
+        if (existing.isPresent()) return "Already checked in today!";
 
         LocalTime now = LocalTime.now();
-
         Attendance attendance = new Attendance();
         attendance.setUser(user);
         attendance.setDate(today);
         attendance.setCheckInTime(now);
-        attendance.setStatus("PENDING"); // temporary until checkout
+        attendance.setStatus("PENDING");
         attendanceRepository.save(attendance);
 
         return "Checked in successfully at " + now;
     }
 
-    // ✅ 2. EMPLOYEE — Check-Out
     @PostMapping("/checkout")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String checkOut(@RequestParam String email) {
@@ -64,35 +64,27 @@ public class AttendanceController {
         Attendance attendance = attendanceRepository.findByUserAndDate(user, today)
                 .orElseThrow(() -> new RuntimeException("No check-in record found!"));
 
-        if (attendance.getCheckOutTime() != null) {
-            return "Already checked out!";
-        }
+        if (attendance.getCheckOutTime() != null) return "Already checked out!";
 
         LocalTime checkIn = attendance.getCheckInTime();
         LocalTime checkOut = LocalTime.now();
         attendance.setCheckOutTime(checkOut);
-
-        String status = determineFinalStatus(checkIn, checkOut);
-        attendance.setStatus(status);
+        attendance.setStatus(determineFinalStatus(checkIn, checkOut));
         attendanceRepository.save(attendance);
 
-        return "Checked out at " + checkOut + " (" + status + ")";
+        return "Checked out at " + checkOut + " (" + attendance.getStatus() + ")";
     }
 
-    // ✅ FINAL STATUS LOGIC
     private String determineFinalStatus(LocalTime checkIn, LocalTime checkOut) {
         if (checkIn == null) return "ABSENT";
-
         if (checkIn.isAfter(ABSENT_LIMIT)) return "ABSENT";
         if (checkOut.isBefore(CHECKOUT_FULL_DAY)) return "HALF_DAY";
         if (checkIn.isAfter(HALF_DAY_LIMIT) && checkIn.isBefore(ABSENT_LIMIT)) return "HALF_DAY";
         if (checkIn.isAfter(CHECKIN_ON_TIME) && checkIn.isBefore(LATE_LIMIT)) return "LATE";
         if (checkIn.isBefore(CHECKIN_ON_TIME) || checkIn.equals(CHECKIN_ON_TIME)) return "PRESENT";
-
         return "PENDING";
     }
 
-    // ✅ 3. EMPLOYEE — View My Attendance
     @GetMapping("/my")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public List<Attendance> getMyAttendance(@RequestParam String email) {
@@ -101,7 +93,6 @@ public class AttendanceController {
         return attendanceRepository.findByUser(user);
     }
 
-    // ✅ 4. EMPLOYEE — View Monthly Attendance
     @GetMapping("/my/month")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public List<Attendance> getMyAttendanceByMonth(
@@ -114,7 +105,6 @@ public class AttendanceController {
         return attendanceRepository.findByUserAndMonth(user, year, month);
     }
 
-    // ✅ 5. EMPLOYEE — Monthly Attendance Summary
     @GetMapping("/my/month/summary")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public Map<String, Long> getMyMonthlyAttendanceSummary(
@@ -127,6 +117,10 @@ public class AttendanceController {
 
         List<Attendance> attendanceList = attendanceRepository.findByUserAndMonth(user, year, month);
 
+        // Skip weekends
+        attendanceList.removeIf(a -> a.getDate().getDayOfWeek() == DayOfWeek.SATURDAY
+                || a.getDate().getDayOfWeek() == DayOfWeek.SUNDAY);
+
         Map<String, Long> summary = new HashMap<>();
         summary.put("PRESENT", attendanceList.stream().filter(a -> "PRESENT".equals(a.getStatus())).count());
         summary.put("LATE", attendanceList.stream().filter(a -> "LATE".equals(a.getStatus())).count());
@@ -137,23 +131,26 @@ public class AttendanceController {
         return summary;
     }
 
-    // ✅ 6. HR — View All Attendance
+    // =================== HR OPERATIONS ===================
+
     @GetMapping("/all")
     @PreAuthorize("hasRole('HR')")
     public List<Attendance> getAllAttendance() {
         return attendanceRepository.findAll();
     }
 
-    // ✅ 7. HR — View Attendance by Month/Year
     @GetMapping("/all/month")
     @PreAuthorize("hasRole('HR')")
-    public List<Attendance> getAllByMonth(
-            @RequestParam int year,
-            @RequestParam int month) {
-        return attendanceRepository.findByMonth(year, month);
+    public List<Attendance> getAllByMonth(@RequestParam int year, @RequestParam int month) {
+        List<Attendance> list = attendanceRepository.findByMonth(year, month);
+
+        // Skip weekends
+        list.removeIf(a -> a.getDate().getDayOfWeek() == DayOfWeek.SATURDAY
+                || a.getDate().getDayOfWeek() == DayOfWeek.SUNDAY);
+
+        return list;
     }
 
-    // ✅ 8. HR — Edit Attendance
     @PutMapping("/{id}/edit")
     @PreAuthorize("hasRole('HR')")
     public Attendance editAttendance(@PathVariable Long id, @RequestBody Attendance updated) {
@@ -164,10 +161,10 @@ public class AttendanceController {
         existing.setCheckInTime(updated.getCheckInTime());
         existing.setCheckOutTime(updated.getCheckOutTime());
         existing.setReason(updated.getReason());
+
         return attendanceRepository.save(existing);
     }
 
-    // ✅ 9. HR — Delete Attendance
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('HR')")
     public String deleteAttendance(@PathVariable Long id) {
@@ -175,7 +172,6 @@ public class AttendanceController {
         return "Attendance record deleted successfully.";
     }
 
-    // ✅ 10. HR — Monthly Attendance Summary for Single Employee
     @GetMapping("/hr/summary")
     @PreAuthorize("hasRole('HR')")
     public Map<String, Long> getEmployeeMonthlyAttendanceSummary(
@@ -188,6 +184,10 @@ public class AttendanceController {
 
         List<Attendance> attendanceList = attendanceRepository.findByUserAndMonth(user, year, month);
 
+        // Skip weekends
+        attendanceList.removeIf(a -> a.getDate().getDayOfWeek() == DayOfWeek.SATURDAY
+                || a.getDate().getDayOfWeek() == DayOfWeek.SUNDAY);
+
         Map<String, Long> summary = new HashMap<>();
         summary.put("PRESENT", attendanceList.stream().filter(a -> "PRESENT".equals(a.getStatus())).count());
         summary.put("LATE", attendanceList.stream().filter(a -> "LATE".equals(a.getStatus())).count());
@@ -198,7 +198,6 @@ public class AttendanceController {
         return summary;
     }
 
-    // ✅ 11. HR — Monthly Attendance Summary for All Employees
     @GetMapping("/hr/summary/all")
     @PreAuthorize("hasRole('HR')")
     public Map<String, Map<String, Long>> getAllEmployeesMonthlyAttendanceSummary(
@@ -210,6 +209,10 @@ public class AttendanceController {
 
         for (User user : allUsers) {
             List<Attendance> attendanceList = attendanceRepository.findByUserAndMonth(user, year, month);
+
+            // Skip weekends
+            attendanceList.removeIf(a -> a.getDate().getDayOfWeek() == DayOfWeek.SATURDAY
+                    || a.getDate().getDayOfWeek() == DayOfWeek.SUNDAY);
 
             Map<String, Long> summary = new HashMap<>();
             summary.put("PRESENT", attendanceList.stream().filter(a -> "PRESENT".equals(a.getStatus())).count());
