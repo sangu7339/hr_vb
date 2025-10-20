@@ -28,13 +28,18 @@ public class Salary {
 
     private int month;
     private int year;
-    private LocalDate payslipDate;
+
+    private LocalDate payslipDate; // Date of salary generation
+    private LocalDate paidDate;    // Date when salary is marked PAID
 
     @Enumerated(EnumType.STRING)
     private SalaryStatus status;
 
-    // ✅ Bank Details
     private String bankName;
     private String accountNumber;
-}
 
+    // Helper method to calculate net pay
+    public void calculateNetPay() {
+        this.netPay = this.basicPay + this.hra + this.allowances - this.deductions;
+    }
+}

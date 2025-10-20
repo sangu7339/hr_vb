@@ -10,39 +10,44 @@ const HRSalaryManagement = () => {
 
   const [formData, setFormData] = useState({
     employeeCode: "",
-    basicPay: "",
-    hra: "",
-    allowances: "",
-    deductions: "",
+    basicPay: 0,
+    hra: 0,
+    allowances: 0,
+    deductions: 0,
     bankName: "",
     accountNumber: "",
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
+    payslipDate: "",
+    paidDate: "",
   });
 
   const [editFormData, setEditFormData] = useState({
-    basicPay: "",
-    hra: "",
-    allowances: "",
-    deductions: "",
+    basicPay: 0,
+    hra: 0,
+    allowances: 0,
+    deductions: 0,
     bankName: "",
     accountNumber: "",
+    status: "PENDING",
+    payslipDate: "",
+    paidDate: "",
   });
 
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
   const axiosConfig = { headers: { Authorization: `Bearer ${token}` } };
 
-  // --- Role-based Access ---
+  // Role-based access
   if (role !== "HR") {
     return (
-      <p style={{ color: "red", fontWeight: "bold", textAlign: "center", marginTop: 50 }}>
-        Access denied ❌. Make sure you are logged in as HR.
+      <p style={{ color: "red", textAlign: "center", marginTop: 50 }}>
+        Access denied ❌. Please log in as HR.
       </p>
     );
   }
 
-  // --- Fetch Salaries by month/year ---
+  // Fetch salaries
   const fetchSalaries = async () => {
     setLoading(true);
     setError(null);
@@ -64,7 +69,6 @@ const HRSalaryManagement = () => {
     fetchSalaries();
   }, [formData.month, formData.year]);
 
-  // --- Handle Input Changes ---
   const handleChange = (e) => {
     const { name, value } = e.target;
     const numericFields = ["basicPay", "hra", "allowances", "deductions", "month", "year"];
@@ -83,7 +87,7 @@ const HRSalaryManagement = () => {
     });
   };
 
-  // --- Add Payslip ---
+  // Add payslip
   const handleAddPayslip = async (e) => {
     e.preventDefault();
     try {
@@ -91,7 +95,7 @@ const HRSalaryManagement = () => {
         params: formData,
         ...axiosConfig,
       });
-      alert("Payslip added successfully ✅");
+      alert("Payslip added ✅");
       setShowAddPayslip(false);
       fetchSalaries();
     } catch (err) {
@@ -100,34 +104,7 @@ const HRSalaryManagement = () => {
     }
   };
 
-  // --- Edit / Update Salary (even after paid) ---
-  const handleUpdateSalary = async (e) => {
-    e.preventDefault();
-    try {
-      await axios.post(`http://localhost:8080/api/salary/hike`, null, {
-        params: {
-          employeeCode: editingSalary.employee.employeeId,
-          newBasic: editFormData.basicPay,
-          newHra: editFormData.hra,
-          newAllowances: editFormData.allowances,
-          newDeductions: editFormData.deductions,
-          month: editingSalary.month,
-          year: editingSalary.year,
-          bankName: editFormData.bankName,
-          accountNumber: editFormData.accountNumber,
-        },
-        ...axiosConfig,
-      });
-      alert("Salary updated successfully ✅");
-      setEditingSalary(null);
-      fetchSalaries();
-    } catch (err) {
-      console.error(err);
-      alert("Error updating salary ❌");
-    }
-  };
-
-  // --- Start editing ---
+  // Start edit
   const startEdit = (salary) => {
     setEditingSalary(salary);
     setEditFormData({
@@ -137,16 +114,32 @@ const HRSalaryManagement = () => {
       deductions: salary.deductions,
       bankName: salary.bankName,
       accountNumber: salary.accountNumber,
+      status: salary.status,
+      payslipDate: salary.payslipDate || "",
+      paidDate: salary.paidDate || "",
     });
   };
 
   const cancelEdit = () => setEditingSalary(null);
 
-  // --- Mark as Paid ---
-  const markPaid = async (salaryId) => {
+  // Update salary
+  const handleUpdateSalary = async (e) => {
+    e.preventDefault();
     try {
-      await axios.put(`http://localhost:8080/api/salary/${salaryId}/pay`, {}, axiosConfig);
-      alert("Salary marked as PAID ✅");
+      await axios.put(
+        `http://localhost:8080/api/salary/${editingSalary.id}/update`,
+        null,
+        {
+          params: {
+            ...editFormData,
+            payslipDate: editFormData.payslipDate || undefined,
+            paidDate: editFormData.paidDate || undefined,
+          },
+          ...axiosConfig,
+        }
+      );
+      alert("Salary updated ✅");
+      setEditingSalary(null);
       fetchSalaries();
     } catch (err) {
       console.error(err);
@@ -154,14 +147,39 @@ const HRSalaryManagement = () => {
     }
   };
 
-  if (loading) return <p style={{ textAlign: "center", marginTop: 20 }}>Loading salary records...</p>;
-  if (error) return <p style={{ color: "red", textAlign: "center", marginTop: 20 }}>{error}</p>;
+  // Delete salary
+  const handleDelete = async (salaryId) => {
+    if (!window.confirm("Are you sure you want to delete this salary record?")) return;
+    try {
+      await axios.delete(`http://localhost:8080/api/salary/${salaryId}`, axiosConfig);
+      alert("Salary deleted ✅");
+      fetchSalaries();
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting salary ❌");
+    }
+  };
+
+  // Mark paid
+  const markPaid = async (salaryId) => {
+    try {
+      await axios.put(`http://localhost:8080/api/salary/${salaryId}/pay`, {}, axiosConfig);
+      alert("Salary marked as PAID ✅");
+      fetchSalaries();
+    } catch (err) {
+      console.error(err);
+      alert("Error marking paid ❌");
+    }
+  };
+
+  if (loading) return <p style={{ textAlign: "center" }}>Loading...</p>;
+  if (error) return <p style={{ color: "red", textAlign: "center" }}>{error}</p>;
 
   return (
     <div className="container">
       <h2>💼 HR Salary Management</h2>
 
-      {/* --- Filter by Month / Year --- */}
+      {/* Month/Year filter */}
       <div style={{ marginBottom: 15 }}>
         <select name="month" value={formData.month} onChange={handleChange}>
           {Array.from({ length: 12 }, (_, i) => (
@@ -182,14 +200,14 @@ const HRSalaryManagement = () => {
         </button>
       </div>
 
-      {/* --- Add Payslip --- */}
+      {/* Add payslip */}
       <button onClick={() => setShowAddPayslip(!showAddPayslip)}>
         {showAddPayslip ? "Cancel" : "Add Payslip"}
       </button>
 
       {showAddPayslip && (
-        <form onSubmit={handleAddPayslip} style={{ margin: "15px 0" }}>
-          {["employeeCode", "basicPay", "hra", "allowances", "deductions", "bankName", "accountNumber"].map((f) => (
+        <form onSubmit={handleAddPayslip} style={{ margin: "10px 0" }}>
+          {["employeeCode","basicPay","hra","allowances","deductions","bankName","accountNumber"].map((f) => (
             <input
               key={f}
               name={f}
@@ -198,14 +216,55 @@ const HRSalaryManagement = () => {
               placeholder={f}
               type={["basicPay","hra","allowances","deductions"].includes(f) ? "number" : "text"}
               required
-              style={{ marginRight: 10, marginBottom: 5 }}
+              style={{ marginRight: 5, marginBottom: 5 }}
             />
           ))}
+
+          {/* Payslip & Paid Date */}
+          <input
+            type="date"
+            name="payslipDate"
+            
+            value={formData.payslipDate || ""}
+            onChange={handleChange}
+            required
+            style={{ marginRight: 5, marginBottom: 5 }}
+          />
+          <input
+            type="date"
+            name="paidDate"
+            value={formData.paidDate || ""}
+            onChange={handleChange}
+            style={{ marginRight: 5, marginBottom: 5 }}
+          />
+
+          {/* Month/Year */}
+          {/* <select
+            name="month"
+            value={formData.month}
+            onChange={handleChange}
+            style={{ marginRight: 5, marginBottom: 5 }}
+          >
+            {Array.from({ length: 12 }, (_, i) => (
+              <option key={i + 1} value={i + 1}>
+                {new Date(0, i).toLocaleString("default", { month: "long" })}
+              </option>
+            ))}
+          </select> */}
+          {/* <input
+            type="number"
+            name="year"
+            value={formData.year}
+            onChange={handleChange}
+            style={{ marginRight: 5, width: 80, marginBottom: 5 }}
+            required
+          /> */}
+
           <button type="submit">Save Payslip</button>
         </form>
       )}
 
-      {/* --- Salary Table --- */}
+      {/* Salary Table */}
       <table border="1" cellPadding="5" style={{ width: "100%", marginTop: 20 }}>
         <thead>
           <tr>
@@ -216,6 +275,8 @@ const HRSalaryManagement = () => {
             <th>Deductions</th>
             <th>Net Pay</th>
             <th>Status</th>
+            <th>Payslip Date</th>
+            <th>Paid Date</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -227,20 +288,25 @@ const HRSalaryManagement = () => {
               <td>{s.hra}</td>
               <td>{s.allowances}</td>
               <td>{s.deductions}</td>
-              <td style={{ fontWeight: "bold" }}>{s.netPay}</td>
-              <td style={{ fontWeight: "bold", color: s.status === "PAID" ? "green" : s.status === "PENDING" ? "orange" : "blue" }}>
-                {s.status}
-              </td>
+              <td>{s.netPay}</td>
+              <td>{s.status}</td>
+              <td>{s.payslipDate || "-"}</td>
+              <td>{s.paidDate || "-"}</td>
               <td>
                 <button onClick={() => startEdit(s)}>Edit</button>
-                <button onClick={() => markPaid(s.id)} style={{ marginLeft: 5 }}>Mark Paid</button>
+                <button onClick={() => markPaid(s.id)} style={{ marginLeft: 5 }}>
+                  Mark Paid
+                </button>
+                <button onClick={() => handleDelete(s.id)} style={{ marginLeft: 5, color:"red" }}>
+                  Delete
+                </button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      {/* --- Edit Form --- */}
+      {/* Edit Form */}
       {editingSalary && (
         <div style={{ marginTop: 20 }}>
           <h3>Editing Salary for {editingSalary.employee?.name}</h3>
@@ -251,14 +317,47 @@ const HRSalaryManagement = () => {
                 name={f}
                 value={editFormData[f]}
                 onChange={handleEditChange}
-                type={["basicPay","hra","allowances","deductions"].includes(f) ? "number" : "text"}
                 placeholder={f}
+                type="number"
                 required
-                style={{ marginRight: 10, marginBottom: 5 }}
+                style={{ marginRight: 5, marginBottom: 5 }}
               />
             ))}
+
+            {/* Status Dropdown */}
+            <select
+              name="status"
+              value={editFormData.status}
+              onChange={handleEditChange}
+              style={{ marginRight: 5, marginBottom: 5 }}
+            >
+              <option value="CURRENT">CURRENT</option>
+              <option value="PENDING">PENDING</option>
+              <option value="PAID">PAID</option>
+            </select>
+
+            {/* Payslip Date */}
+            <input
+              type="date"
+              name="payslipDate"
+              value={editFormData.payslipDate || ""}
+              onChange={handleEditChange}
+              style={{ marginRight: 5, marginBottom: 5 }}
+              required
+            />
+            {/* Paid Date */}
+            <input
+              type="date"
+              name="paidDate"
+              value={editFormData.paidDate || ""}
+              onChange={handleEditChange}
+              style={{ marginRight: 5, marginBottom: 5 }}
+            />
+
             <button type="submit">Update</button>
-            <button type="button" onClick={cancelEdit} style={{ marginLeft: 5 }}>Cancel</button>
+            <button type="button" onClick={cancelEdit} style={{ marginLeft: 5 }}>
+              Cancel
+            </button>
           </form>
         </div>
       )}

@@ -1,4 +1,5 @@
 package com.VentureBiz.VenureBiz_Hr.controller;
+
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
@@ -23,126 +24,94 @@ public class SalaryController {
     private final EmployeeRepository employeeRepository;
     private final SalaryRepository salaryRepository;
 
-//    // ✅ Generate Salary for an Employee (HR only)
-//    @PostMapping("/generate")
-//    @PreAuthorize("hasRole('HR')")
-//    public Salary generateSalary(@RequestParam String employeeCode,
-//                                 @RequestParam int month,
-//                                 @RequestParam int year,
-//                                 @RequestParam double basicPay,
-//                                 @RequestParam double hra,
-//                                 @RequestParam double allowances,
-//                                 @RequestParam double deductions,
-//                                 @RequestParam String bankName,
-//                                 @RequestParam String accountNumber) {
-//
-//        Employee employee = employeeRepository.findByEmployeeId(employeeCode)
-//                .orElseThrow(() -> new RuntimeException("Employee not found"));
-//
-//        double netPay = basicPay + hra + allowances - deductions;
-//
-//        // Check if salary already exists for this month
-//        salaryRepository.findByEmployeeAndMonthAndYear(employee, month, year)
-//                .ifPresent(s -> { throw new RuntimeException("Salary already generated for this month"); });
-//
-//        Salary salary = Salary.builder()
-//                .employee(employee)
-//                .basicPay(basicPay)
-//                .hra(hra)
-//                .allowances(allowances)
-//                .deductions(deductions)
-//                .netPay(netPay)
-//                .month(month)
-//                .year(year)
-//                .payslipDate(LocalDate.now())
-//                .status(SalaryStatus.PENDING)
-//                .bankName(bankName)
-//                .accountNumber(accountNumber)
-//                .build();
-//
-//        return salaryRepository.save(salary);
-//    }
+    // ✅ Generate or update Salary for an Employee (HR only)
     @PostMapping("/generate")
     @PreAuthorize("hasRole('HR')")
-   // @PreAuthorize("hasAuthority('ROLE_HR')")
-    public Salary generateSalary(@RequestParam String employeeCode,
-                                 @RequestParam int month,
-                                 @RequestParam int year,
-                                 @RequestParam double basicPay,
-                                 @RequestParam double hra,
-                                 @RequestParam double allowances,
-                                 @RequestParam double deductions,
-                                 @RequestParam String bankName,
-                                 @RequestParam String accountNumber) {
+    public Salary generateOrUpdateSalary(@RequestParam String employeeCode,
+                                         @RequestParam int month,
+                                         @RequestParam int year,
+                                         @RequestParam double basicPay,
+                                         @RequestParam double hra,
+                                         @RequestParam double allowances,
+                                         @RequestParam double deductions,
+                                         @RequestParam String bankName,
+                                         @RequestParam String accountNumber) {
 
-        // 1. Find Employee
         Employee employee = employeeRepository.findByEmployeeId(employeeCode)
-                .orElseThrow(() -> 
-                    new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "Employee not found with code: " + employeeCode
-                    )
-                );
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.BAD_REQUEST, "Employee not found: " + employeeCode));
 
-        // 2. Check if salary already exists
-        salaryRepository.findByEmployeeAndMonthAndYear(employee, month, year)
-                .ifPresent(s -> {
-                    throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "Salary already generated for this month"
-                    );
-                });
+        Salary salary = salaryRepository.findByEmployeeAndMonthAndYear(employee, month, year)
+                .orElse(Salary.builder().employee(employee).month(month).year(year).payslipDate(LocalDate.now()).status(SalaryStatus.PENDING).build());
 
-        // 3. Calculate net pay
-        double netPay = basicPay + hra + allowances - deductions;
+        salary.setBasicPay(basicPay);
+        salary.setHra(hra);
+        salary.setAllowances(allowances);
+        salary.setDeductions(deductions);
+        salary.setNetPay(basicPay + hra + allowances - deductions);
+        salary.setBankName(bankName);
+        salary.setAccountNumber(accountNumber);
+        if (salary.getPayslipDate() == null) salary.setPayslipDate(LocalDate.now());
 
-        // 4. Build salary record
-        Salary salary = Salary.builder()
-                .employee(employee)
-                .basicPay(basicPay)
-                .hra(hra)
-                .allowances(allowances)
-                .deductions(deductions)
-                .netPay(netPay)
-                .month(month)
-                .year(year)
-                .payslipDate(LocalDate.now())
-                .status(SalaryStatus.PENDING)
-                .bankName(bankName)
-                .accountNumber(accountNumber)
-                .build();
-
-        // 5. Save and return
         return salaryRepository.save(salary);
     }
 
-
-    // ✅ HR — Approve / Mark Salary as Paid
+    // ✅ HR — Mark Salary as Paid
     @PutMapping("/{salaryId}/pay")
     @PreAuthorize("hasRole('HR')")
     public Salary markPaid(@PathVariable Long salaryId) {
         Salary salary = salaryRepository.findById(salaryId)
                 .orElseThrow(() -> new RuntimeException("Salary record not found"));
-
         salary.setStatus(SalaryStatus.PAID);
+        salary.setPaidDate(LocalDate.now());
         return salaryRepository.save(salary);
     }
 
-    // ✅ Employee — View Own Salary / Payslip
- // ✅ Employee — View Own Salary / Payslip using employee ID
-//    @GetMapping("/my")
-//    @PreAuthorize("hasRole('EMPLOYEE')")
-//    public List<Salary> mySalary(@RequestParam Long employeeId) {
-//        Employee employee = employeeRepository.findById(employeeId)
-//                .orElseThrow(() -> new RuntimeException("Employee not found"));
-//
-//        return salaryRepository.findByEmployee(employee);
-//    }
+    // ✅ HR — Update Salary (anytime)
+    @PutMapping("/{salaryId}/update")
+    @PreAuthorize("hasRole('HR')")
+    public Salary updateSalary(@PathVariable Long salaryId,
+                               @RequestParam double basicPay,
+                               @RequestParam double hra,
+                               @RequestParam double allowances,
+                               @RequestParam double deductions,
+                               @RequestParam String bankName,
+                               @RequestParam String accountNumber,
+                               @RequestParam SalaryStatus status,
+                               @RequestParam(required = false) LocalDate payslipDate,
+                               @RequestParam(required = false) LocalDate paidDate) {
+        Salary salary = salaryRepository.findById(salaryId)
+                .orElseThrow(() -> new RuntimeException("Salary record not found"));
 
+        salary.setBasicPay(basicPay);
+        salary.setHra(hra);
+        salary.setAllowances(allowances);
+        salary.setDeductions(deductions);
+        salary.setNetPay(basicPay + hra + allowances - deductions);
+        salary.setBankName(bankName);
+        salary.setAccountNumber(accountNumber);
+        salary.setStatus(status);
+        if (payslipDate != null) salary.setPayslipDate(payslipDate);
+        if (paidDate != null) salary.setPaidDate(paidDate);
+
+        return salaryRepository.save(salary);
+    }
+
+    // ✅ HR — Delete Salary Record
+    @DeleteMapping("/{salaryId}")
+    @PreAuthorize("hasRole('HR')")
+    public void deleteSalary(@PathVariable Long salaryId) {
+        Salary salary = salaryRepository.findById(salaryId)
+                .orElseThrow(() -> new RuntimeException("Salary record not found"));
+        salaryRepository.delete(salary);
+    }
+
+    // ✅ Employee — View Own Salary / Payslip
     @GetMapping("/my")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public List<Salary> mySalary(@RequestParam String employeeCode) {
         Employee employee = employeeRepository.findByEmployeeId(employeeCode)
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
-
         return salaryRepository.findByEmployee(employee);
     }
 
@@ -151,41 +120,5 @@ public class SalaryController {
     @PreAuthorize("hasRole('HR')")
     public List<Salary> allSalariesByMonth(@RequestParam int month, @RequestParam int year) {
         return salaryRepository.findByMonthAndYear(month, year);
-    }
-
-    // ✅ HR — Apply Hike for Employee
-    @PostMapping("/hike")
-    @PreAuthorize("hasRole('HR')")
-    public Salary applyHike(@RequestParam String employeeCode,
-                            @RequestParam double newBasic,
-                            @RequestParam double newHra,
-                            @RequestParam double newAllowances,
-                            @RequestParam double newDeductions,
-                            @RequestParam int month,
-                            @RequestParam int year,
-                            @RequestParam String bankName,
-                            @RequestParam String accountNumber) {
-
-        Employee employee = employeeRepository.findByEmployeeId(employeeCode)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
-
-        double netPay = newBasic + newHra + newAllowances - newDeductions;
-
-        Salary salary = Salary.builder()
-                .employee(employee)
-                .basicPay(newBasic)
-                .hra(newHra)
-                .allowances(newAllowances)
-                .deductions(newDeductions)
-                .netPay(netPay)
-                .month(month)
-                .year(year)
-                .payslipDate(LocalDate.now())
-                .status(SalaryStatus.PENDING)
-                .bankName(bankName)
-                .accountNumber(accountNumber)
-                .build();
-
-        return salaryRepository.save(salary);
     }
 }
