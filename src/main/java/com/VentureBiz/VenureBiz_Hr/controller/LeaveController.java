@@ -6,6 +6,7 @@ import com.VentureBiz.VenureBiz_Hr.repository.LeaveRepository;
 import com.VentureBiz.VenureBiz_Hr.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -103,17 +104,36 @@ public class LeaveController {
         return leaveRepository.findAll();
     }
 
-    // ✅ HR updates leave status (approve/reject)
+//    // ✅ HR updates leave status (approve/reject)
+//    @PutMapping("/{id}/status")
+//    @PreAuthorize("hasRole('HR')")
+//    public LeaveRequest updateLeaveStatus(@PathVariable Long id, @RequestParam LeaveRequest.LeaveStatus leaveStatus) {
+//        LeaveRequest leave = leaveRepository.findById(id)
+//                .orElseThrow(() -> new RuntimeException("Leave not found"));
+//
+//        // Optional: track who changed status and when
+//        leave.setLeaveStatus(leaveStatus);
+//  //      leave.setApprovedByHr("HR_EMAIL_OR_PRINCIPAL"); // Optional, get from logged-in HR
+// //       leave.setApprovedOn(LocalDate.now());           // Optional timestamp
+//
+//        return leaveRepository.save(leave);
+//    }
+    
+    
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('HR')")
-    public LeaveRequest updateLeaveStatus(@PathVariable Long id, @RequestParam LeaveRequest.LeaveStatus leaveStatus) {
+    public LeaveRequest updateLeaveStatus(@PathVariable Long id,
+                                          @RequestParam LeaveRequest.LeaveStatus leaveStatus) {
         LeaveRequest leave = leaveRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Leave not found"));
 
-        // Optional: track who changed status and when
+        // ✅ Allow status change anytime
         leave.setLeaveStatus(leaveStatus);
-  //      leave.setApprovedByHr("HR_EMAIL_OR_PRINCIPAL"); // Optional, get from logged-in HR
- //       leave.setApprovedOn(LocalDate.now());           // Optional timestamp
+
+        // Track who updated and when
+        String hrEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        leave.setApprovedByHr(hrEmail);
+        leave.setApprovedOn(LocalDate.now());
 
         return leaveRepository.save(leave);
     }

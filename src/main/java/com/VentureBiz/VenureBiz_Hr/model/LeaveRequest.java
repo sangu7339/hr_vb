@@ -39,12 +39,18 @@ public class LeaveRequest {
     @Column(name = "leave_status", nullable = false)
     private LeaveStatus leaveStatus;
 
-    // ✅ Changed back to LocalDate
     @Column(nullable = false)
     private LocalDate appliedOn;
 
     @Column(length = 500)
     private String reason;
+
+    // ✅ New fields for HR approval
+    @Column(name = "approved_by_hr")
+    private String approvedByHr;
+
+    @Column(name = "approved_on")
+    private LocalDate approvedOn;
 
     public enum LeaveType {
         SICK,
@@ -68,3 +74,4 @@ public class LeaveRequest {
         }
     }
 }
+

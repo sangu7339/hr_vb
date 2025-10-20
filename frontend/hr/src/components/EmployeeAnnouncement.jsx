@@ -88,7 +88,7 @@ const EmployeeAnnouncement = ({ user }) => {
 
   return (
     <div style={{ maxWidth: 900, margin: "20px auto", padding: 20, background: "#fff", borderRadius: 12 }}>
-      <h2>📢 Announcements</h2>
+      {/* <h2>📢 Announcements</h2> */}
       {announcements.length === 0 ? (
         <p>No announcements available.</p>
       ) : (

@@ -1,5 +1,6 @@
 package com.VentureBiz.VenureBiz_Hr.controller;
-
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.VentureBiz.VenureBiz_Hr.model.Employee;
 import com.VentureBiz.VenureBiz_Hr.model.User;
 import com.VentureBiz.VenureBiz_Hr.repository.EmployeeRepository;
@@ -115,4 +116,17 @@ public class HrController {
             throw new RuntimeException("User id or email must be provided");
         }
     }
+    
+    @GetMapping("/employee/me")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'HR')") // Both employee and HR can view their own profile
+    public ResponseEntity<?> getOwnProfile() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = auth.getName(); // assuming username = email
+
+        return employeeRepository.findByUser_Email(email)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(404)
+                        .body("❌ Employee profile not found for: " + email));
+    }
+    
 }
